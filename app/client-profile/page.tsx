@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import ClientProfileManager from '../../components/ClientProfile/ClientProfileManager';
+import ClientProfileManager from '../../components/ClientProfile';
 import { Client } from '../../components/Settings/ClientManagement';
 
 export default function ClientProfilePage() {
