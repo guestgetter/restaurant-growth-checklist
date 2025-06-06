@@ -165,8 +165,20 @@ export default function ClientManagement() {
     setCurrentClient(clientId);
     localStorage.setItem('growth-os-current-client', clientId);
     
-    // Trigger a page reload to update the sidebar
-    window.location.reload();
+    // Trigger storage event for sidebar to update without reload
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: 'growth-os-current-client',
+      newValue: clientId,
+      oldValue: currentClient || ''
+    }));
+    
+    // Trigger custom event for immediate updates
+    window.dispatchEvent(new CustomEvent('clientChanged', {
+      detail: { clientId }
+    }));
+    
+    // Show success message instead of reload
+    alert(`Successfully switched to ${clients.find(c => c.id === clientId)?.name || 'client'}`);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

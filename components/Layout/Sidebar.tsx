@@ -410,13 +410,13 @@ export default function Sidebar() {
           <>
             <button
               onClick={() => {
-                // Only allow switching for team members with multiple clients
-                if (session?.user?.role === 'team' && allClients.length > 1) {
+                // Allow switching for any user with multiple clients
+                if (allClients.length > 1) {
                   setShowClientSwitcher(!showClientSwitcher)
                 }
               }}
               className={`w-full flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700 rounded-lg transition-colors client-switcher ${
-                session?.user?.role === 'team' && allClients.length > 1 
+                allClients.length > 1 
                   ? 'hover:bg-slate-100 dark:hover:bg-slate-600 cursor-pointer' 
                   : 'cursor-default'
               }`}
@@ -443,8 +443,8 @@ export default function Sidebar() {
                   {currentClient.industry || 'Restaurant'}
                 </p>
               </div>
-              {/* Only show dropdown arrow for team members with multiple clients */}
-              {session?.user?.role === 'team' && allClients.length > 1 && (
+              {/* Show dropdown arrow for any user with multiple clients */}
+              {allClients.length > 1 && (
                 showClientSwitcher ? (
                   <ChevronUp className="text-slate-400" size={16} />
                 ) : (
