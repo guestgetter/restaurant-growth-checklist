@@ -19,7 +19,8 @@ import {
   Plus,
   Check,
   User,
-  LogOut
+  LogOut,
+  BookOpen
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -35,6 +36,7 @@ interface SidebarItem {
   href: string;
   badge?: string;
   comingSoon?: boolean;
+  teamOnly?: boolean;
 }
 
 const sidebarItems: SidebarItem[] = [
@@ -57,6 +59,12 @@ const sidebarItems: SidebarItem[] = [
     href: '/dashboard',
   },
   {
+    id: 'client-profile',
+    title: 'Client Profile',
+    icon: <User size={20} />,
+    href: '/client-profile',
+  },
+  {
     id: 'leverage',
     title: 'Leverage',
     icon: <Target size={20} />,
@@ -68,6 +76,13 @@ const sidebarItems: SidebarItem[] = [
     title: 'Report & Insights Generator',
     icon: <FileText size={20} />,
     href: '/reports',
+  },
+  {
+    id: 'sops',
+    title: 'Standard Operating Procedures',
+    icon: <BookOpen size={20} />,
+    href: '/sops',
+    teamOnly: true,
   },
   {
     id: 'settings',
@@ -514,7 +529,9 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-1">
-        {sidebarItems.map((item) => (
+        {sidebarItems
+          .filter(item => !item.teamOnly || session?.user?.role === 'team')
+          .map((item) => (
           <Link
             key={item.id}
             href={item.comingSoon ? '#' : item.href}
@@ -542,6 +559,11 @@ export default function Sidebar() {
                   {item.comingSoon && (
                     <span className="px-2 py-1 text-xs bg-amber-100 text-amber-600 rounded-full">
                       Soon
+                    </span>
+                  )}
+                  {item.teamOnly && (
+                    <span className="px-2 py-1 text-xs bg-red-100 text-red-600 rounded-full">
+                      Team
                     </span>
                   )}
                 </div>

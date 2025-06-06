@@ -35,51 +35,81 @@ export const checklistData: ChecklistSection[] = [
     items: [
       {
         id: 'onboarding-1',
-        text: 'Internal Alignment Complete',
+        text: 'Review Meeting Summary + Proposal',
         completed: false,
-        description: 'Establish clear roles, expectations, and client profile understanding within your team.',
+        description: 'Review all pre-close conversations and confirm proposal details before kick-off.',
         subTasks: [
           {
             id: 'onboarding-1-1',
-            text: 'Assign account lead + fulfillment manager',
+            text: 'Review all conversation history in Client Profile',
             completed: false,
           },
           {
             id: 'onboarding-1-2',
-            text: 'Review intake form + discovery notes',
+            text: 'Confirm proposal details and scope of work',
             completed: false,
           },
           {
             id: 'onboarding-1-3',
-            text: 'Confirm restaurant type, target audience, and top competitors',
+            text: 'Review client\'s stated goals and challenges',
             completed: false,
           },
           {
             id: 'onboarding-1-4',
-            text: 'Define "Current State" profile: traffic, bookings, reviews, list size, brand presence',
+            text: 'Prepare kick-off call agenda and talking points',
+            completed: false,
+          },
+        ],
+        tips: [
+          'Having full context before the kick-off call shows professionalism',
+          'Reference specific points from previous conversations to build rapport',
+          'Come prepared with questions about their business goals',
+        ],
+        resources: [
+          {
+            title: 'Client Profile Manager',
+            url: '/client-profile',
+            type: 'tool',
+          },
+        ],
+      },
+      {
+        id: 'onboarding-2',
+        text: 'Create Client Profile',
+        completed: false,
+        description: 'Set up comprehensive client profile with baseline metrics and dream case study.',
+        subTasks: [
+          {
+            id: 'onboarding-2-1',
+            text: 'Create new client profile in system',
             completed: false,
           },
           {
-            id: 'onboarding-1-5',
-            text: 'Establish "Dream Case Study" goal: exciting, measurable, transformation',
+            id: 'onboarding-2-2',
+            text: 'Document "Starting Baseline": current revenue, traffic, reviews, challenges',
             completed: false,
           },
           {
-            id: 'onboarding-1-6',
-            text: 'Document internal summary (roles, expectations, timelines)',
+            id: 'onboarding-2-3',
+            text: 'Establish "Dream Case Study" vision: exciting, measurable transformation goal',
+            completed: false,
+          },
+          {
+            id: 'onboarding-2-4',
+            text: 'Add all prospect conversation history and summaries',
             completed: false,
           },
         ],
         tips: [
           'Be specific about the Dream Case Study goal - "40% revenue increase in 6 months" not "more customers"',
-          'Document everything in a shared system for team alignment',
-          'Set clear ownership for each phase and deliverable',
+          'Document baseline metrics for future comparison and case study development',
+          'Include both quantitative metrics and qualitative challenges',
         ],
         resources: [
           {
-            title: 'Client Discovery Template',
-            url: '#',
-            type: 'template',
+            title: 'Client Profile Manager',
+            url: '/client-profile',
+            type: 'tool',
           },
           {
             title: 'Dream Case Study Worksheet',
@@ -89,66 +119,211 @@ export const checklistData: ChecklistSection[] = [
         ],
       },
       {
-        id: 'onboarding-2',
-        text: 'Client Kickoff Call Completed',
-        completed: false,
-        description: 'Align expectations and establish engagement rhythm with the client.',
-        subTasks: [
-          {
-            id: 'onboarding-2-1',
-            text: 'Host 60-min kickoff call (vision, expectations, how we work)',
-            completed: false,
-          },
-          {
-            id: 'onboarding-2-2',
-            text: 'Present 3-phase Growth System (Magnet / Convert / Keep)',
-            completed: false,
-          },
-          {
-            id: 'onboarding-2-3',
-            text: 'Align on short- and long-term priorities',
-            completed: false,
-          },
-          {
-            id: 'onboarding-2-4',
-            text: 'Confirm cadence: Bi-weekly Pulse Calls, Monthly Strategic Reporting, Quarterly Deep-Dive',
-            completed: false,
-          },
-        ],
-        tips: [
-          'Record the kickoff call for team reference',
-          'Send a follow-up summary within 24 hours',
-          'Get client agreement on the engagement cadence in writing',
-        ],
-      },
-      {
         id: 'onboarding-3',
-        text: 'Platform Access Secured',
+        text: 'Send Welcome Email + Strategy Overview',
         completed: false,
-        description: 'Gain access to all necessary client platforms and systems.',
+        description: 'Send comprehensive welcome package with strategy preview and kick-off call preparation.',
         subTasks: [
           {
             id: 'onboarding-3-1',
-            text: 'Website CMS access obtained',
+            text: 'Send personalized welcome email with team introductions',
             completed: false,
           },
           {
             id: 'onboarding-3-2',
-            text: 'Google Business Profile access secured',
+            text: 'Include high-level strategy overview and what to expect',
             completed: false,
           },
           {
             id: 'onboarding-3-3',
-            text: 'Meta Ads / Google Ads accounts connected',
+            text: 'Outline kick-off call agenda and preparation items',
             completed: false,
           },
           {
             id: 'onboarding-3-4',
-            text: 'Email/SMS platforms (Klaviyo, etc.) integrated',
+            text: 'Share initial access requirements and account information needed',
             completed: false,
           },
           {
             id: 'onboarding-3-5',
+            text: 'Set expectations for communication rhythm and reporting',
+            completed: false,
+          },
+        ],
+        tips: [
+          'Personal touch in the welcome email builds immediate rapport',
+          'Give them a preview of the strategy to build excitement',
+          'Clear expectations prevent confusion later',
+        ],
+        resources: [
+          {
+            title: 'Welcome Email Template',
+            url: '#',
+            type: 'template',
+          },
+        ],
+      },
+      {
+        id: 'onboarding-4',
+        text: 'Conduct Kick-Off Call - Priorities + Access',
+        completed: false,
+        description: 'Execute the critical kick-off call to establish priorities and secure access.',
+        subTasks: [
+          {
+            id: 'onboarding-4-1',
+            text: 'Make sure you\'re recording the call',
+            completed: false,
+          },
+          {
+            id: 'onboarding-4-2',
+            text: 'Confirm business priorities and immediate focus areas',
+            completed: false,
+          },
+          {
+            id: 'onboarding-4-3',
+            text: 'Secure access to all necessary platforms and accounts',
+            completed: false,
+          },
+          {
+            id: 'onboarding-4-4',
+            text: 'Review and refine the "Dream Case Study" vision together',
+            completed: false,
+          },
+          {
+            id: 'onboarding-4-5',
+            text: 'Schedule all recurring calls (weekly pulse + monthly strategic)',
+            completed: false,
+          },
+          {
+            id: 'onboarding-4-6',
+            text: 'Add kick-off call summary to Client Profile conversation history',
+            completed: false,
+          },
+        ],
+        tips: [
+          'Use this call to get buy-in on priorities and timeline',
+          'Co-create the dream case study vision for ownership',
+          'Schedule the entire year of monthly calls at the same time',
+        ],
+        resources: [
+          {
+            title: 'Client Profile Manager',
+            url: '/client-profile',
+            type: 'tool',
+          },
+          {
+            title: 'Kick-off Call Agenda Template',
+            url: '#',
+            type: 'template',
+          },
+        ],
+      },
+      {
+        id: 'onboarding-5',
+        text: 'Schedule Pulse-Check + Strategic Calls',
+        completed: false,
+        description: 'Establish complete communication calendar for the entire year.',
+        subTasks: [
+          {
+            id: 'onboarding-5-1',
+            text: 'Schedule weekly pulse calls (15-30 min check-ins)',
+            completed: false,
+          },
+          {
+            id: 'onboarding-5-2',
+            text: 'Schedule monthly strategic reporting calls (60 min) - same day, same time, entire year',
+            completed: false,
+          },
+          {
+            id: 'onboarding-5-3',
+            text: 'Set up calendar invites with recurring meeting links',
+            completed: false,
+          },
+          {
+            id: 'onboarding-5-4',
+            text: 'Share Growth OS dashboard access with client',
+            completed: false,
+          },
+          {
+            id: 'onboarding-5-5',
+            text: 'Send calendar summary with all scheduled touchpoints',
+            completed: false,
+          },
+        ],
+        tips: [
+          'Consistency builds trust - same day/time every month',
+          'Weekly pulse calls keep momentum and catch issues early',
+          'Send calendar summary so they can see the full year commitment',
+        ],
+      },
+      {
+        id: 'onboarding-6',
+        text: 'Send Welcome Gift Basket',
+        completed: false,
+        description: 'Send thoughtful welcome gift to make a memorable first impression.',
+        subTasks: [
+          {
+            id: 'onboarding-6-1',
+            text: 'Select appropriate welcome gift based on client preferences',
+            completed: false,
+          },
+          {
+            id: 'onboarding-6-2',
+            text: 'Include personalized note referencing their goals',
+            completed: false,
+          },
+          {
+            id: 'onboarding-6-3',
+            text: 'Arrange delivery to business location',
+            completed: false,
+          },
+          {
+            id: 'onboarding-6-4',
+            text: 'Follow up to confirm receipt and get reaction',
+            completed: false,
+          },
+        ],
+        tips: [
+          'Personalization shows you were paying attention during sales process',
+          'Gift should reflect their business or personal interests when possible',
+          'Follow-up call gives you another touchpoint to build relationship',
+        ],
+        resources: [
+          {
+            title: 'Welcome Gift Ideas',
+            url: '#',
+            type: 'template',
+          },
+        ],
+      },
+      {
+        id: 'onboarding-7',
+        text: 'Account Access',
+        completed: false,
+        description: 'Gain access to all necessary client platforms and systems.',
+        subTasks: [
+          {
+            id: 'onboarding-7-1',
+            text: 'Website access obtained',
+            completed: false,
+          },
+          {
+            id: 'onboarding-7-2',
+            text: 'Google Business Profile access secured',
+            completed: false,
+          },
+          {
+            id: 'onboarding-7-3',
+            text: 'Meta Ads / Google Ads accounts connected',
+            completed: false,
+          },
+          {
+            id: 'onboarding-7-4',
+            text: 'Email/SMS platforms (Klaviyo, etc.) integrated',
+            completed: false,
+          },
+          {
+            id: 'onboarding-7-5',
             text: 'POS + Reservation Systems connected (if available)',
             completed: false,
           },
@@ -160,33 +335,33 @@ export const checklistData: ChecklistSection[] = [
         ],
       },
       {
-        id: 'onboarding-4',
+        id: 'onboarding-8',
         text: 'Technical Tracking Setup Complete',
         completed: false,
         description: 'Install all necessary tracking and measurement infrastructure.',
         subTasks: [
           {
-            id: 'onboarding-4-1',
+            id: 'onboarding-8-1',
             text: 'Install Meta Pixel',
             completed: false,
           },
           {
-            id: 'onboarding-4-2',
+            id: 'onboarding-8-2',
             text: 'Install Google Ads Tag',
             completed: false,
           },
           {
-            id: 'onboarding-4-3',
+            id: 'onboarding-8-3',
             text: 'Set up Google Tag Manager with centralized scripts',
             completed: false,
           },
           {
-            id: 'onboarding-4-4',
+            id: 'onboarding-8-4',
             text: 'Configure GA4 with enhanced measurement + conversions',
             completed: false,
           },
           {
-            id: 'onboarding-4-5',
+            id: 'onboarding-8-5',
             text: 'Define + track goals (opt-ins, bookings, redemptions, inquiries)',
             completed: false,
           },
@@ -198,28 +373,178 @@ export const checklistData: ChecklistSection[] = [
         ],
       },
       {
-        id: 'onboarding-5',
+        id: 'onboarding-9',
+        text: 'Billing',
+        completed: false,
+        description: 'Set up billing and payment processing systems.',
+        subTasks: [
+          {
+            id: 'onboarding-9-1',
+            text: 'Payment method collected and verified',
+            completed: false,
+          },
+          {
+            id: 'onboarding-9-2',
+            text: 'Billing schedule confirmed (monthly/quarterly)',
+            completed: false,
+          },
+          {
+            id: 'onboarding-9-3',
+            text: 'Invoice delivery preferences set',
+            completed: false,
+          },
+          {
+            id: 'onboarding-9-4',
+            text: 'Auto-billing enabled and tested',
+            completed: false,
+          },
+        ],
+        tips: [
+          'Set up auto-billing to reduce administrative overhead',
+          'Send a test invoice to verify the billing process works',
+          'Document payment terms and late fee policies clearly',
+        ],
+      },
+      {
+        id: 'onboarding-10',
+        text: 'Media Folder Access',
+        completed: false,
+        description: 'Establish shared media and asset management systems.',
+        subTasks: [
+          {
+            id: 'onboarding-10-1',
+            text: 'Create shared Google Drive or Dropbox folder',
+            completed: false,
+          },
+          {
+            id: 'onboarding-10-2',
+            text: 'Collect existing brand assets (logos, images, guidelines)',
+            completed: false,
+          },
+          {
+            id: 'onboarding-10-3',
+            text: 'Set up organized folder structure for campaigns',
+            completed: false,
+          },
+          {
+            id: 'onboarding-10-4',
+            text: 'Grant client access to shared folders',
+            completed: false,
+          },
+        ],
+        tips: [
+          'Use consistent naming conventions for all assets',
+          'Create separate folders for raw files vs. final assets',
+          'Set appropriate permissions for client access',
+        ],
+      },
+      {
+        id: 'onboarding-11',
+        text: 'Mailing Address Collected',
+        completed: false,
+        description: 'Gather complete business address and contact information.',
+        subTasks: [
+          {
+            id: 'onboarding-11-1',
+            text: 'Business address for Google Business Profile',
+            completed: false,
+          },
+          {
+            id: 'onboarding-11-2',
+            text: 'Billing address (if different from business)',
+            completed: false,
+          },
+          {
+            id: 'onboarding-11-3',
+            text: 'Primary contact phone number',
+            completed: false,
+          },
+          {
+            id: 'onboarding-11-4',
+            text: 'Emergency contact information',
+            completed: false,
+          },
+        ],
+        tips: [
+          'Verify address matches Google Business Profile exactly',
+          'Get multiple contact methods for important communications',
+          'Update address in all marketing platforms for consistency',
+        ],
+      },
+      {
+        id: 'onboarding-12',
+        text: 'Restaurant Offers Inventory',
+        completed: false,
+        description: 'Build a proven offer arsenal - 5 go-to promotions plus bulletproof backup options.',
+        subTasks: [
+          {
+            id: 'onboarding-12-1',
+            text: 'Define 5 "Always Ready" offers the restaurant will run anytime',
+            completed: false,
+          },
+          {
+            id: 'onboarding-12-2',
+            text: 'Document offer terms: minimum purchase, restrictions, expiration rules',
+            completed: false,
+          },
+          {
+            id: 'onboarding-12-3',
+            text: 'Create seasonal promotion calendar (holidays, local events, slow periods)',
+            completed: false,
+          },
+          {
+            id: 'onboarding-12-4',
+            text: 'Set up "Proven Offer Library" with tested high-performers for this client',
+            completed: false,
+          },
+          {
+            id: 'onboarding-12-5',
+            text: 'Configure loyalty program structure and rewards',
+            completed: false,
+          },
+        ],
+        tips: [
+          'Best restaurant offers: Free appetizer with entree, BOGO deals, "First visit" discounts, Family meal bundles',
+          'Always include minimum purchase requirements to protect margins',
+          'Create urgency with limited-time offers and exclusive access',
+          'Test offers that drive repeat visits, not just one-time transactions',
+        ],
+        resources: [
+          {
+            title: 'Restaurant Offer Templates',
+            url: '#',
+            type: 'template',
+          },
+          {
+            title: 'Proven Offer Library',
+            url: '#',
+            type: 'tool',
+          },
+        ],
+      },
+      {
+        id: 'onboarding-13',
         text: 'Campaign Intelligence Infrastructure Ready',
         completed: false,
         description: 'Establish systematic campaign tracking and attribution systems.',
         subTasks: [
           {
-            id: 'onboarding-5-1',
+            id: 'onboarding-13-1',
             text: 'Create UTM Library (naming conventions + live links)',
             completed: false,
           },
           {
-            id: 'onboarding-5-2',
+            id: 'onboarding-13-2',
             text: 'Create campaign index doc',
             completed: false,
           },
           {
-            id: 'onboarding-5-3',
+            id: 'onboarding-13-3',
             text: 'Test events using Pixel Helper / Tag Assistant',
             completed: false,
           },
           {
-            id: 'onboarding-5-4',
+            id: 'onboarding-13-4',
             text: 'Create "Tracking Snapshot" Doc and verify dashboard links',
             completed: false,
           },
