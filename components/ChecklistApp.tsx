@@ -2,46 +2,224 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckSquare, Square, Trophy, Target, BarChart3, Download, Share2, RotateCcw, Moon, Sun } from 'lucide-react';
-import { checklistData, ChecklistItem, ChecklistSection } from '../app/data/checklist-data';
+import { 
+  CheckSquare, 
+  Square, 
+  Trophy, 
+  Target, 
+  BarChart3, 
+  Download, 
+  Share2, 
+  RotateCcw, 
+  Moon, 
+  Sun,
+  ChevronDown,
+  ChevronRight,
+  Lightbulb,
+  ExternalLink,
+  FileText,
+  Play,
+  Settings,
+  BookOpen
+} from 'lucide-react';
+import { checklistData, ChecklistItem, ChecklistSection, ChecklistSubTask } from '../app/data/checklist-data';
+import { Client } from './Settings/ClientManagement';
+import { migrateGlobalProgressToClient } from '../lib/migrateProgress';
 
 export default function ChecklistApp() {
   const [sections, setSections] = useState<ChecklistSection[]>(checklistData);
   const [completedItems, setCompletedItems] = useState<Set<string>>(new Set());
+  const [completedSubTasks, setCompletedSubTasks] = useState<Set<string>>(new Set());
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [currentView, setCurrentView] = useState<'all' | string>('all');
   const [showStats, setShowStats] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [currentClient, setCurrentClient] = useState<Client | null>(null);
 
-  // Load progress and theme from localStorage
+  // Load current client and client-specific progress
   useEffect(() => {
-    const saved = localStorage.getItem('restaurant-checklist-progress');
-    const savedTheme = localStorage.getItem('restaurant-checklist-theme');
-    
-    if (saved) {
-      const completedIds = JSON.parse(saved);
-      setCompletedItems(new Set(completedIds));
+    const loadClientAndProgress = () => {
+      // First, migrate any existing global progress
+      migrateGlobalProgressToClient();
       
-      // Update sections with completed status
-      setSections(prevSections => 
-        prevSections.map(section => ({
-          ...section,
-          items: section.items.map(item => ({
-            ...item,
-            completed: completedIds.includes(item.id)
-          }))
-        }))
-      );
-    }
+      // Load current client
+      const savedCurrentClientId = localStorage.getItem('growth-os-current-client');
+      const savedClients = localStorage.getItem('growth-os-clients');
+      
+      // Debug logging
+      console.log('Loading clients:', { savedCurrentClientId, savedClients });
+      
+      let clients: Client[] = [];
+      let currentClientId = savedCurrentClientId;
+      
+      if (savedClients) {
+        try {
+          clients = JSON.parse(savedClients);
+          console.log('Parsed clients:', clients);
+        } catch (error) {
+          console.error('Error parsing saved clients:', error);
+          clients = [];
+        }
+      }
+      
+      // Create default client ONLY if absolutely no clients exist
+      if (clients.length === 0) {
+        console.log('No clients found, creating default client');
+        const defaultClient: Client = {
+          id: '1',
+          name: 'Pizza Palace',
+          industry: 'Quick Service Restaurant',
+          logo: '',
+          branding: {
+            primaryColor: '#3B82F6',
+            secondaryColor: '#1E40AF',
+            fontFamily: 'Inter'
+          },
+          contact: {
+            email: 'info@pizzapalace.com',
+            phone: '(555) 123-4567',
+            address: '123 Main St, Your City'
+          },
+          status: 'active',
+          createdAt: new Date().toISOString()
+        };
+        
+        clients = [defaultClient];
+        currentClientId = defaultClient.id;
+        
+        // Save to localStorage
+        localStorage.setItem('growth-os-clients', JSON.stringify(clients));
+        localStorage.setItem('growth-os-current-client', currentClientId);
+        console.log('Saved default client to localStorage');
+      } else {
+        console.log('Found existing clients, preserving them');
+      }
+      
+      // Find and set current client
+      if (currentClientId && clients.length > 0) {
+        const client = clients.find(c => c.id === currentClientId) || clients[0];
+        setCurrentClient(client);
+        
+        // Update current client ID if we fell back to first client
+        if (client.id !== currentClientId) {
+          localStorage.setItem('growth-os-current-client', client.id);
+        }
+        
+        // Load progress specific to this client
+        const clientProgressKey = `restaurant-checklist-progress-${client.id}`;
+        const clientSubTasksKey = `restaurant-checklist-subtasks-${client.id}`;
+        
+        const saved = localStorage.getItem(clientProgressKey);
+        const savedSubTasks = localStorage.getItem(clientSubTasksKey);
+        
+        if (saved) {
+          const completedIds = JSON.parse(saved);
+          setCompletedItems(new Set(completedIds));
+          
+          // Update sections with completed status for this client
+          setSections(prevSections => 
+            prevSections.map(section => ({
+              ...section,
+              items: section.items.map(item => ({
+                ...item,
+                completed: completedIds.includes(item.id)
+              }))
+            }))
+          );
+        } else {
+          // No progress for this client yet - reset to empty
+          setCompletedItems(new Set());
+          setSections(checklistData); // Reset to default state
+        }
 
+        if (savedSubTasks) {
+          const completedSubTaskIds = JSON.parse(savedSubTasks);
+          setCompletedSubTasks(new Set(completedSubTaskIds));
+        } else {
+          setCompletedSubTasks(new Set());
+        }
+      } else {
+        // Fallback: create and set a default client immediately
+        const fallbackClient: Client = {
+          id: Date.now().toString(),
+          name: 'My Restaurant',
+          industry: 'Restaurant',
+          logo: '',
+          branding: {
+            primaryColor: '#3B82F6',
+            secondaryColor: '#1E40AF',
+            fontFamily: 'Inter'
+          },
+          contact: {
+            email: '',
+            phone: '',
+            address: ''
+          },
+          status: 'active',
+          createdAt: new Date().toISOString()
+        };
+        
+        setCurrentClient(fallbackClient);
+        localStorage.setItem('growth-os-clients', JSON.stringify([fallbackClient]));
+        localStorage.setItem('growth-os-current-client', fallbackClient.id);
+        
+        // Initialize with empty progress
+        setCompletedItems(new Set());
+        setCompletedSubTasks(new Set());
+        setSections(checklistData);
+      }
+    };
+
+    loadClientAndProgress();
+
+    // Load theme
+    const savedTheme = localStorage.getItem('restaurant-checklist-theme');
     if (savedTheme === 'dark') {
       setIsDarkMode(true);
       document.documentElement.classList.add('dark');
     }
+
+    // Listen for client changes
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'growth-os-current-client') {
+        loadClientAndProgress();
+      }
+    };
+
+    // Listen for custom client change events for immediate updates
+    const handleClientChange = (e: CustomEvent) => {
+      if (e.detail.client) {
+        setCurrentClient(e.detail.client);
+        // Reload progress for the new client
+        setTimeout(() => {
+          loadClientAndProgress();
+        }, 0);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('clientChanged', handleClientChange as EventListener);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('clientChanged', handleClientChange as EventListener);
+    };
   }, []);
 
-  // Save progress to localStorage
+  // Save progress to localStorage for current client
   const saveProgress = (newCompletedItems: Set<string>) => {
-    localStorage.setItem('restaurant-checklist-progress', JSON.stringify(Array.from(newCompletedItems)));
+    if (currentClient) {
+      const clientProgressKey = `restaurant-checklist-progress-${currentClient.id}`;
+      localStorage.setItem(clientProgressKey, JSON.stringify(Array.from(newCompletedItems)));
+    }
+  };
+
+  // Save sub-task progress to localStorage for current client
+  const saveSubTaskProgress = (newCompletedSubTasks: Set<string>) => {
+    if (currentClient) {
+      const clientSubTasksKey = `restaurant-checklist-subtasks-${currentClient.id}`;
+      localStorage.setItem(clientSubTasksKey, JSON.stringify(Array.from(newCompletedSubTasks)));
+    }
   };
 
   // Toggle dark mode
@@ -83,19 +261,69 @@ export default function ChecklistApp() {
     );
   };
 
+  const toggleSubTask = (subTaskId: string) => {
+    const newCompletedSubTasks = new Set(completedSubTasks);
+    
+    if (newCompletedSubTasks.has(subTaskId)) {
+      newCompletedSubTasks.delete(subTaskId);
+    } else {
+      newCompletedSubTasks.add(subTaskId);
+    }
+    
+    setCompletedSubTasks(newCompletedSubTasks);
+    saveSubTaskProgress(newCompletedSubTasks);
+  };
+
+  const toggleExpanded = (itemId: string) => {
+    const newExpandedItems = new Set(expandedItems);
+    
+    if (newExpandedItems.has(itemId)) {
+      newExpandedItems.delete(itemId);
+    } else {
+      newExpandedItems.add(itemId);
+    }
+    
+    setExpandedItems(newExpandedItems);
+  };
+
+  const getResourceIcon = (type: string) => {
+    switch (type) {
+      case 'article': return <BookOpen size={14} />;
+      case 'video': return <Play size={14} />;
+      case 'tool': return <Settings size={14} />;
+      case 'template': return <FileText size={14} />;
+      default: return <ExternalLink size={14} />;
+    }
+  };
+
   const resetProgress = () => {
-    if (confirm('Are you sure you want to reset all progress? This cannot be undone.')) {
+    if (!currentClient) return;
+    
+    if (confirm(`Are you sure you want to reset all progress for ${currentClient.name}? This cannot be undone.`)) {
       setCompletedItems(new Set());
-      localStorage.removeItem('restaurant-checklist-progress');
+      setCompletedSubTasks(new Set());
+      const clientProgressKey = `restaurant-checklist-progress-${currentClient.id}`;
+      const clientSubTasksKey = `restaurant-checklist-subtasks-${currentClient.id}`;
+      localStorage.removeItem(clientProgressKey);
+      localStorage.removeItem(clientSubTasksKey);
       setSections(checklistData);
     }
   };
 
   const exportProgress = () => {
+    if (!currentClient) return;
+    
     const data = {
+      client: {
+        name: currentClient.name,
+        industry: currentClient.industry
+      },
       timestamp: new Date().toISOString(),
       completedItems: Array.from(completedItems),
+      completedSubTasks: Array.from(completedSubTasks),
       totalItems: sections.reduce((acc, section) => acc + section.items.length, 0),
+      totalSubTasks: sections.reduce((acc, section) => 
+        acc + section.items.reduce((itemAcc, item) => itemAcc + (item.subTasks?.length || 0), 0), 0),
       progress: Math.round((completedItems.size / sections.reduce((acc, section) => acc + section.items.length, 0)) * 100)
     };
     
@@ -103,16 +331,18 @@ export default function ChecklistApp() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `restaurant-growth-checklist-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `${currentClient.name.toLowerCase().replace(/\s+/g, '-')}-growth-checklist-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   const shareProgress = async () => {
+    if (!currentClient) return;
+    
     const totalItems = sections.reduce((acc, section) => acc + section.items.length, 0);
     const progress = Math.round((completedItems.size / totalItems) * 100);
     
-    const shareText = `Restaurant Growth OS Checklist Progress: ${completedItems.size}/${totalItems} items completed (${progress}%)`;
+    const shareText = `${currentClient.name} - Restaurant Growth OS Checklist Progress: ${completedItems.size}/${totalItems} items completed (${progress}%)`;
     
     if (navigator.share) {
       try {
@@ -125,6 +355,18 @@ export default function ChecklistApp() {
       alert('Progress copied to clipboard!');
     }
   };
+
+  // Don't render until we have a current client
+  if (!currentClient) {
+    return (
+      <div className="h-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-slate-600 dark:text-slate-400">Loading client data...</p>
+        </div>
+      </div>
+    );
+  }
 
   const totalItems = sections.reduce((acc, section) => acc + section.items.length, 0);
   const progressPercentage = Math.round((completedItems.size / totalItems) * 100);
@@ -139,17 +381,17 @@ export default function ChecklistApp() {
     : sections.filter(section => section.id === currentView);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 transition-colors duration-300">
-      {/* Header */}
-      <div className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-700/50 transition-colors duration-300">
-        <div className="max-w-6xl mx-auto px-4 py-4">
+    <div className="h-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 transition-colors duration-300">
+      {/* Checklist Header */}
+      <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-700/50 transition-colors duration-300">
+        <div className="p-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-center sm:text-left">
               <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-slate-100 dark:to-slate-300 bg-clip-text text-transparent">
-                Restaurant Growth OS Checklist
+                Growth System Checklist
               </h1>
               <p className="text-slate-600 dark:text-slate-400 text-sm sm:text-base">
-                Your comprehensive roadmap to restaurant success
+                {currentClient.name} - Your comprehensive roadmap to restaurant success
               </p>
             </div>
             
@@ -351,35 +593,161 @@ export default function ChecklistApp() {
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: (sectionIndex * 0.1) + (itemIndex * 0.05) }}
-                      className={`flex items-start gap-4 p-4 rounded-xl border-2 transition-all duration-300 cursor-pointer group ${
+                      className={`border-2 rounded-xl transition-all duration-300 ${
                         item.completed
-                          ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700 hover:bg-green-100 dark:hover:bg-green-900/30'
-                          : 'bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-500'
+                          ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700'
+                          : 'bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600'
                       }`}
-                      onClick={() => toggleItem(item.id)}
                     >
-                      <div className="flex-shrink-0 mt-1">
-                        {item.completed ? (
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            className="text-green-600 dark:text-green-400"
+                      {/* Main Item */}
+                      <div className="flex items-start gap-4 p-4">
+                        <button
+                          onClick={() => toggleItem(item.id)}
+                          className="flex-shrink-0 mt-1 hover:scale-110 transition-transform"
+                        >
+                          {item.completed ? (
+                            <motion.div
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              className="text-green-600 dark:text-green-400"
+                            >
+                              <CheckSquare size={20} />
+                            </motion.div>
+                          ) : (
+                            <Square size={20} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-400" />
+                          )}
+                        </button>
+                        <div className="flex-1">
+                          <p className={`text-sm leading-relaxed transition-colors ${
+                            item.completed 
+                              ? 'text-green-800 dark:text-green-300 line-through' 
+                              : 'text-slate-700 dark:text-slate-300'
+                          }`}>
+                            {item.text}
+                          </p>
+                        </div>
+                        {(item.description || item.subTasks || item.tips || item.resources) && (
+                          <button
+                            onClick={() => toggleExpanded(item.id)}
+                            className="flex-shrink-0 p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded transition-colors"
                           >
-                            <CheckSquare size={20} />
-                          </motion.div>
-                        ) : (
-                          <Square size={20} className="text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-400" />
+                            {expandedItems.has(item.id) ? (
+                              <ChevronDown size={16} className="text-slate-500" />
+                            ) : (
+                              <ChevronRight size={16} className="text-slate-500" />
+                            )}
+                          </button>
                         )}
                       </div>
-                      <div className="flex-1">
-                        <p className={`text-sm leading-relaxed transition-colors ${
-                          item.completed 
-                            ? 'text-green-800 dark:text-green-300 line-through' 
-                            : 'text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100'
-                        }`}>
-                          {item.text}
-                        </p>
-                      </div>
+
+                      {/* Expanded Content */}
+                      <AnimatePresence>
+                        {expandedItems.has(item.id) && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="px-4 pb-4 space-y-4 border-t border-slate-200 dark:border-slate-600 pt-4">
+                              {/* Description */}
+                              {item.description && (
+                                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+                                  <p className="text-sm text-slate-700 dark:text-slate-300">
+                                    {item.description}
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Sub-tasks */}
+                              {item.subTasks && item.subTasks.length > 0 && (
+                                <div>
+                                  <h4 className="font-medium text-slate-800 dark:text-slate-200 mb-2 flex items-center gap-2">
+                                    <Target size={16} />
+                                    Action Steps
+                                  </h4>
+                                  <div className="space-y-2">
+                                    {item.subTasks.map((subTask: ChecklistSubTask) => (
+                                      <div
+                                        key={subTask.id}
+                                        className="flex items-center gap-3 p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-600"
+                                      >
+                                        <button
+                                          onClick={() => toggleSubTask(subTask.id)}
+                                          className="flex-shrink-0"
+                                        >
+                                          {completedSubTasks.has(subTask.id) ? (
+                                            <CheckSquare size={16} className="text-green-600 dark:text-green-400" />
+                                          ) : (
+                                            <Square size={16} className="text-slate-400 dark:text-slate-500" />
+                                          )}
+                                        </button>
+                                        <span className={`text-sm ${
+                                          completedSubTasks.has(subTask.id)
+                                            ? 'text-green-700 dark:text-green-300 line-through'
+                                            : 'text-slate-600 dark:text-slate-400'
+                                        }`}>
+                                          {subTask.text}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Tips */}
+                              {item.tips && item.tips.length > 0 && (
+                                <div>
+                                  <h4 className="font-medium text-slate-800 dark:text-slate-200 mb-2 flex items-center gap-2">
+                                    <Lightbulb size={16} />
+                                    Pro Tips
+                                  </h4>
+                                  <div className="space-y-2">
+                                    {item.tips.map((tip, tipIndex) => (
+                                      <div
+                                        key={tipIndex}
+                                        className="flex items-start gap-2 p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg"
+                                      >
+                                        <div className="w-1.5 h-1.5 bg-amber-500 rounded-full mt-2 flex-shrink-0"></div>
+                                        <p className="text-sm text-amber-800 dark:text-amber-200">{tip}</p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Resources */}
+                              {item.resources && item.resources.length > 0 && (
+                                <div>
+                                  <h4 className="font-medium text-slate-800 dark:text-slate-200 mb-2 flex items-center gap-2">
+                                    <BookOpen size={16} />
+                                    Resources
+                                  </h4>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    {item.resources.map((resource, resourceIndex) => (
+                                      <a
+                                        key={resourceIndex}
+                                        href={resource.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                                      >
+                                        <div className="text-blue-500 dark:text-blue-400">
+                                          {getResourceIcon(resource.type)}
+                                        </div>
+                                        <span className="text-sm text-slate-700 dark:text-slate-300 truncate">
+                                          {resource.title}
+                                        </span>
+                                        <ExternalLink size={12} className="text-slate-400 ml-auto" />
+                                      </a>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </motion.div>
                   ))}
                 </div>
@@ -407,8 +775,8 @@ export default function ChecklistApp() {
                   Congratulations!
                 </h3>
                 <p className="text-slate-600 dark:text-slate-300 mb-6">
-                  You've completed the entire Restaurant Growth OS Checklist! 
-                  Your restaurant is ready for explosive growth.
+                  {currentClient.name} has completed the entire Restaurant Growth OS Checklist! 
+                  This restaurant is ready for explosive growth.
                 </p>
                 <button
                   onClick={() => setShowStats(false)}

@@ -1,17 +1,17 @@
-import type { Metadata, Viewport } from 'next'
+import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import { Providers } from './providers'
+import AuthWrapper from '../components/AuthWrapper'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Restaurant Growth OS Checklist',
-  description: 'A comprehensive growth checklist for restaurant success',
-  keywords: 'restaurant, growth, checklist, marketing, business',
-  authors: [{ name: 'Restaurant Growth OS' }],
+  title: 'Growth OS - Restaurant Growth Platform',
+  description: 'Comprehensive restaurant growth management platform with checklist, analytics, and insights',
 }
 
-export const viewport: Viewport = {
+export const viewport = {
   width: 'device-width',
   initialScale: 1,
 }
@@ -23,8 +23,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="scroll-smooth">
-      <body className={`${inter.className} antialiased min-h-screen bg-gradient-to-br from-slate-50 to-slate-100`}>
-        {children}
+      <body className={`${inter.className} antialiased min-h-screen bg-slate-50 dark:bg-slate-900`}>
+        <Providers session={null}>
+          <AuthWrapper>
+            {children}
+          </AuthWrapper>
+        </Providers>
       </body>
     </html>
   )
