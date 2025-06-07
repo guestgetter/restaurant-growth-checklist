@@ -5,6 +5,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { Providers } from './providers'
 import AuthWrapper from '../components/AuthWrapper'
+import ErrorBoundary from '../components/ErrorBoundary'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -28,11 +29,13 @@ export default async function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <body className={`${inter.className} antialiased min-h-screen bg-slate-50 dark:bg-slate-900`}>
-        <Providers session={session}>
-          <AuthWrapper>
-            {children}
-          </AuthWrapper>
-        </Providers>
+        <ErrorBoundary>
+          <Providers session={session}>
+            <AuthWrapper>
+              {children}
+            </AuthWrapper>
+          </Providers>
+        </ErrorBoundary>
       </body>
     </html>
   )

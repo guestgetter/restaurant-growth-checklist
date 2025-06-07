@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { fixAllClientDataFormats, checkClientDataFormats, getAllClients } from '../../lib/clientDataFixer';
+import ErrorBoundaryTest from '../../components/ErrorBoundaryTest';
+import DataErrorBoundary from '../../components/DataErrorBoundary';
 
 export default function DebugPage() {
   const [clients, setClients] = useState<any[]>([]);
@@ -70,6 +72,9 @@ export default function DebugPage() {
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8">
       <h1 className="text-3xl font-bold mb-8">Debug Dashboard</h1>
+
+      {/* Error Boundary Testing */}
+      <ErrorBoundaryTest />
 
       {/* Environment Status */}
       <div className="bg-white rounded-lg shadow p-6">

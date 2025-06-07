@@ -3,7 +3,7 @@ import { GoogleAdsService } from '../../../lib/googleAdsService';
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     const startDate = searchParams.get('startDate') || '2025-03-01';
     const endDate = searchParams.get('endDate') || new Date().toISOString().split('T')[0];
     const customerId = searchParams.get('customerId') || 'demo';

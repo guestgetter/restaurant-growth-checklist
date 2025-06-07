@@ -199,7 +199,7 @@ const generateDemoTimeSeriesData = () => {
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     const since = searchParams.get('since') || '2024-01-01';
     const until = searchParams.get('until') || new Date().toISOString().split('T')[0];
     const accountId = searchParams.get('accountId');

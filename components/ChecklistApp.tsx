@@ -25,6 +25,19 @@ import {
 import { checklistData, ChecklistItem, ChecklistSection, ChecklistSubTask } from '../app/data/checklist-data';
 import { Client } from './Settings/ClientManagement';
 import { migrateGlobalProgressToClient } from '../lib/migrateProgress';
+import { 
+  safeArray, 
+  safeMap, 
+  safeFilter, 
+  safeGet, 
+  safeString, 
+  safeNumber,
+  safeLocalStorage,
+  safeJsonParse,
+  safeJsonStringify,
+  isValidObject,
+  validateArray
+} from '../lib/defensive';
 
 export default function ChecklistApp() {
   const [sections, setSections] = useState<ChecklistSection[]>(checklistData);
@@ -42,9 +55,9 @@ export default function ChecklistApp() {
       // First, migrate any existing global progress
       migrateGlobalProgressToClient();
       
-      // Load current client
-      const savedCurrentClientId = localStorage.getItem('growth-os-current-client');
-      const savedClients = localStorage.getItem('growth-os-clients');
+      // Load current client with safe operations
+      const savedCurrentClientId = safeLocalStorage.getItem('growth-os-current-client');
+      const savedClients = safeLocalStorage.getItem('growth-os-clients');
       
       // Debug logging
       console.log('Loading clients:', { savedCurrentClientId, savedClients });
@@ -52,15 +65,12 @@ export default function ChecklistApp() {
       let clients: Client[] = [];
       let currentClientId = savedCurrentClientId;
       
-      if (savedClients) {
-        try {
-          clients = JSON.parse(savedClients);
-          console.log('Parsed clients:', clients);
-        } catch (error) {
-          console.error('Error parsing saved clients:', error);
-          clients = [];
-        }
-      }
+      // Safe JSON parsing with validation
+      clients = safeJsonParse<Client[]>(savedClients, []);
+      
+      // Validate that clients is actually an array
+      clients = validateArray<Client>(clients, 'clients');
+      console.log('Safely parsed clients:', clients);
       
       // Create default client ONLY if absolutely no clients exist
       if (clients.length === 0) {
@@ -87,9 +97,9 @@ export default function ChecklistApp() {
         clients = [defaultClient];
         currentClientId = defaultClient.id;
         
-        // Save to localStorage
-        localStorage.setItem('growth-os-clients', JSON.stringify(clients));
-        localStorage.setItem('growth-os-current-client', currentClientId);
+        // Save to localStorage with safe operations
+        safeLocalStorage.setItem('growth-os-clients', safeJsonStringify(clients));
+        safeLocalStorage.setItem('growth-os-current-client', currentClientId || '');
         console.log('Saved default client to localStorage');
       } else {
         console.log('Found existing clients, preserving them');
@@ -102,18 +112,19 @@ export default function ChecklistApp() {
         
         // Update current client ID if we fell back to first client
         if (client.id !== currentClientId) {
-          localStorage.setItem('growth-os-current-client', client.id);
+          safeLocalStorage.setItem('growth-os-current-client', client.id);
         }
         
         // Load progress specific to this client
         const clientProgressKey = `restaurant-checklist-progress-${client.id}`;
         const clientSubTasksKey = `restaurant-checklist-subtasks-${client.id}`;
         
-        const saved = localStorage.getItem(clientProgressKey);
-        const savedSubTasks = localStorage.getItem(clientSubTasksKey);
+        const saved = safeLocalStorage.getItem(clientProgressKey);
+        const savedSubTasks = safeLocalStorage.getItem(clientSubTasksKey);
         
-        if (saved) {
-          const completedIds = JSON.parse(saved);
+        // Safe parsing of completed IDs
+        const completedIds = safeJsonParse<string[]>(saved, []);
+        if (safeArray(completedIds).length > 0) {
           setCompletedItems(new Set(completedIds));
           
           // Update sections with completed status for this client
@@ -132,12 +143,9 @@ export default function ChecklistApp() {
           setSections(checklistData); // Reset to default state
         }
 
-        if (savedSubTasks) {
-          const completedSubTaskIds = JSON.parse(savedSubTasks);
-          setCompletedSubTasks(new Set(completedSubTaskIds));
-        } else {
-          setCompletedSubTasks(new Set());
-        }
+        // Safe parsing of completed subtasks
+        const completedSubTaskIds = safeJsonParse<string[]>(savedSubTasks, []);
+        setCompletedSubTasks(new Set(safeArray(completedSubTaskIds)));
       } else {
         // Fallback: create and set a default client immediately
         const fallbackClient: Client = {
@@ -160,8 +168,8 @@ export default function ChecklistApp() {
         };
         
         setCurrentClient(fallbackClient);
-        localStorage.setItem('growth-os-clients', JSON.stringify([fallbackClient]));
-        localStorage.setItem('growth-os-current-client', fallbackClient.id);
+        safeLocalStorage.setItem('growth-os-clients', safeJsonStringify([fallbackClient]));
+        safeLocalStorage.setItem('growth-os-current-client', fallbackClient.id);
         
         // Initialize with empty progress
         setCompletedItems(new Set());
@@ -172,8 +180,8 @@ export default function ChecklistApp() {
 
     loadClientAndProgress();
 
-    // Load theme
-    const savedTheme = localStorage.getItem('restaurant-checklist-theme');
+    // Load theme with safe localStorage
+    const savedTheme = safeLocalStorage.getItem('restaurant-checklist-theme');
     if (savedTheme === 'dark') {
       setIsDarkMode(true);
       document.documentElement.classList.add('dark');
@@ -206,33 +214,35 @@ export default function ChecklistApp() {
     };
   }, []);
 
-  // Save progress to localStorage for current client
+  // Save progress to localStorage for current client with defensive programming
   const saveProgress = (newCompletedItems: Set<string>) => {
-    if (currentClient) {
+    if (currentClient?.id) {
       const clientProgressKey = `restaurant-checklist-progress-${currentClient.id}`;
-      localStorage.setItem(clientProgressKey, JSON.stringify(Array.from(newCompletedItems)));
+      const progressArray = Array.from(newCompletedItems);
+      safeLocalStorage.setItem(clientProgressKey, safeJsonStringify(progressArray));
     }
   };
 
-  // Save sub-task progress to localStorage for current client
+  // Save sub-task progress to localStorage for current client with defensive programming
   const saveSubTaskProgress = (newCompletedSubTasks: Set<string>) => {
-    if (currentClient) {
+    if (currentClient?.id) {
       const clientSubTasksKey = `restaurant-checklist-subtasks-${currentClient.id}`;
-      localStorage.setItem(clientSubTasksKey, JSON.stringify(Array.from(newCompletedSubTasks)));
+      const subTasksArray = Array.from(newCompletedSubTasks);
+      safeLocalStorage.setItem(clientSubTasksKey, safeJsonStringify(subTasksArray));
     }
   };
 
-  // Toggle dark mode
+  // Toggle dark mode with safe localStorage
   const toggleDarkMode = () => {
     const newDarkMode = !isDarkMode;
     setIsDarkMode(newDarkMode);
     
     if (newDarkMode) {
       document.documentElement.classList.add('dark');
-      localStorage.setItem('restaurant-checklist-theme', 'dark');
+      safeLocalStorage.setItem('restaurant-checklist-theme', 'dark');
     } else {
       document.documentElement.classList.remove('dark');
-      localStorage.setItem('restaurant-checklist-theme', 'light');
+      safeLocalStorage.setItem('restaurant-checklist-theme', 'light');
     }
   };
 
@@ -297,16 +307,16 @@ export default function ChecklistApp() {
   };
 
   const resetProgress = () => {
-    if (!currentClient) return;
+    if (!currentClient?.id || !currentClient?.name) return;
     
     if (confirm(`Are you sure you want to reset all progress for ${currentClient.name}? This cannot be undone.`)) {
       setCompletedItems(new Set());
       setCompletedSubTasks(new Set());
       const clientProgressKey = `restaurant-checklist-progress-${currentClient.id}`;
       const clientSubTasksKey = `restaurant-checklist-subtasks-${currentClient.id}`;
-      localStorage.removeItem(clientProgressKey);
-      localStorage.removeItem(clientSubTasksKey);
-      setSections(checklistData);
+      safeLocalStorage.removeItem(clientProgressKey);
+      safeLocalStorage.removeItem(clientSubTasksKey);
+      setSections(validateArray(checklistData, 'checklistData'));
     }
   };
 
@@ -372,13 +382,25 @@ export default function ChecklistApp() {
   const progressPercentage = Math.round((completedItems.size / totalItems) * 100);
 
   const getSectionProgress = (section: ChecklistSection) => {
-    const sectionCompleted = section.items.filter(item => completedItems.has(item.id)).length;
+    // Defensive programming for section progress calculation
+    if (!section || !Array.isArray(section.items)) {
+      console.warn('getSectionProgress: Invalid section or items:', section);
+      return 0;
+    }
+    
+    if (section.items.length === 0) return 0;
+    
+    const sectionCompleted = section.items.filter(
+      (item: ChecklistItem) => item?.id && completedItems.has(item.id)
+    ).length;
+    
     return Math.round((sectionCompleted / section.items.length) * 100);
   };
 
+  // Safe section filtering with defensive programming
   const filteredSections = currentView === 'all' 
-    ? sections 
-    : sections.filter(section => section.id === currentView);
+    ? (Array.isArray(sections) ? sections : [])
+    : (Array.isArray(sections) ? sections.filter(section => section?.id === currentView) : []);
 
   return (
     <div className="h-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 transition-colors duration-300">
@@ -566,7 +588,7 @@ export default function ChecklistApp() {
                       {getSectionProgress(section)}%
                     </div>
                     <div className="text-sm text-slate-600 dark:text-slate-400">
-                      {section.items.filter(item => completedItems.has(item.id)).length}/{section.items.length}
+                      {(section.items || []).filter(item => item?.id && completedItems.has(item.id)).length}/{(section.items || []).length}
                     </div>
                   </div>
                 </div>
@@ -587,7 +609,14 @@ export default function ChecklistApp() {
               {/* Section Items */}
               <div className="p-6">
                 <div className="space-y-3">
-                  {section.items.map((item, itemIndex) => (
+                  {(section.items || []).map((item, itemIndex) => {
+                    // Defensive check for item validity
+                    if (!item || !item.id) {
+                      console.warn('Invalid item in section:', section.id, item);
+                      return null;
+                    }
+                    
+                    return (
                     <motion.div
                       key={item.id}
                       initial={{ opacity: 0, x: -20 }}
@@ -667,7 +696,9 @@ export default function ChecklistApp() {
                                     Action Steps
                                   </h4>
                                   <div className="space-y-2">
-                                    {item.subTasks.map((subTask: ChecklistSubTask) => (
+                                    {(item.subTasks || []).map((subTask: ChecklistSubTask) => {
+                                      if (!subTask?.id) return null;
+                                      return (
                                       <div
                                         key={subTask.id}
                                         className="flex items-center gap-3 p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-600"
@@ -690,7 +721,8 @@ export default function ChecklistApp() {
                                           {subTask.text}
                                         </span>
                                       </div>
-                                    ))}
+                                      );
+                                    })}
                                   </div>
                                 </div>
                               )}
@@ -749,7 +781,8 @@ export default function ChecklistApp() {
                         )}
                       </AnimatePresence>
                     </motion.div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </motion.div>
