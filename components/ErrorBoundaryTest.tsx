@@ -34,8 +34,9 @@ const ErrorBoundaryTest: React.FC<ErrorBoundaryTestProps> = ({ className = '' })
     Promise.reject(new Error('Promise rejection - this will NOT be caught by Error Boundary'));
   };
 
-  if (process.env.NODE_ENV === 'production') {
-    return null; // Don't show test component in production
+  // Only hide in actual production (not preview deployments)
+  if (process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV === 'production') {
+    return null; // Don't show test component in actual production
   }
 
   return (
