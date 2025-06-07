@@ -1,3 +1,5 @@
+import { getServerSession } from 'next-auth/next'
+import { authOptions } from './api/auth/[...nextauth]/route'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
@@ -16,15 +18,17 @@ export const viewport = {
   initialScale: 1,
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const session = await getServerSession(authOptions)
+
   return (
     <html lang="en" className="scroll-smooth">
       <body className={`${inter.className} antialiased min-h-screen bg-slate-50 dark:bg-slate-900`}>
-        <Providers session={null}>
+        <Providers session={session}>
           <AuthWrapper>
             {children}
           </AuthWrapper>
