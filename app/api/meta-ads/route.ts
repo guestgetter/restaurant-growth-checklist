@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { metaAdsService } from '../../../lib/metaAdsService';
 
-// Force dynamic rendering for this API route
-export const dynamic = 'force-dynamic';
-
 // Demo data for Meta Ads when API is not configured
 const generateDemoMetaData = () => {
   return {

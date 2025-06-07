@@ -2,29 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Mobile-specific improvements */
-@layer base {
-  html {
-    /* Prevent horizontal scroll on mobile */
-    overflow-x: hidden;
-  }
-  
-  body {
-    /* Improve touch scrolling on iOS */
-    -webkit-overflow-scrolling: touch;
-    /* Prevent horizontal scroll */
-    overflow-x: hidden;
-  }
-  
-  /* Improve touch targets on mobile */
-  @media (max-width: 640px) {
-    button, a, [role="button"] {
-      min-height: 44px;
-      min-width: 44px;
-    }
-  }
-}
-
 @layer base {
   :root {
     --background: 0 0% 100%;
