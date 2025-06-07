@@ -3,7 +3,7 @@
 import { getServerSession } from 'next-auth/next';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '../lib/prisma';
-import { authOptions } from './api/auth/[...nextauth]/route';
+import { authOptions } from '../lib/auth';
 
 export async function updateChecklistProgress(
   subAccountId: string,
