@@ -26,7 +26,8 @@ import {
   Database,
   TrendingUp as TrendUp,
   TrendingDown,
-  Minus
+  Minus,
+  FileText
 } from 'lucide-react';
 
 // Keep the interface definitions here for the client component
@@ -66,16 +67,16 @@ interface HistoricalDataPoint {
 }
 
 interface DashboardClientProps {
-  initialPrimaryMetrics: Record<string, MetricWithChecklist>;
-  // We will add more props here as we fetch real data, e.g., googleAdsData, metaAdsData
+  metrics: Record<string, MetricWithChecklist>;
+  clientName: string;
 }
 
-export default function DashboardClient({ initialPrimaryMetrics }: DashboardClientProps) {
+export default function DashboardClient({ metrics, clientName }: DashboardClientProps) {
   const [expandedMetrics, setExpandedMetrics] = useState<Set<string>>(new Set());
   const [editingMetric, setEditingMetric] = useState<string | null>(null);
   const [selectedDateRange, setSelectedDateRange] = useState('current');
   const [isDataEntryMode, setIsDataEntryMode] = useState(false);
-  const [primaryMetricsData, setPrimaryMetricsData] = useState(initialPrimaryMetrics);
+  const [primaryMetricsData, setPrimaryMetricsData] = useState(metrics);
 
   const toggleMetric = (metricKey: string) => {
     const newExpanded = new Set(expandedMetrics);
