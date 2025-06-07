@@ -24,20 +24,23 @@ const authOptions: NextAuthOptions = {
   ],
   secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
-    async session({ session, token }) {
-      // Always give team role for the hardcoded login
-      if (session.user) {
-        session.user.role = 'team';
-        session.user.allowedClients = 'all'; // Can access all clients
-        session.user.id = token.sub || '';
-      }
-      return session;
-    },
     async jwt({ token, user }) {
+      // On initial sign-in, persist the user data to the token
       if (user) {
-        token.role = 'team';
+        token.id = user.id;
+        token.role = 'team'; // Hardcode role for this user
+        token.allowedClients = 'all'; // Hardcode client access
       }
       return token;
+    },
+    async session({ session, token }) {
+      // Pass the data from the token to the session object
+      if (session.user) {
+        session.user.id = token.id ?? '';
+        session.user.role = token.role ?? 'client';
+        session.user.allowedClients = token.allowedClients ?? null;
+      }
+      return session;
     },
   },
   pages: {
