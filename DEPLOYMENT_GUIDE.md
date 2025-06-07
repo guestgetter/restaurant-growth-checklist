@@ -1,228 +1,189 @@
-# 🚀 Deployment Guide: Staging & Production
+# Restaurant Growth OS - Vercel Deployment Guide
 
-## **Overview: Dev → Staging → Production Workflow**
+## Overview
+This guide covers deploying your Restaurant Growth OS application using Vercel's staging-to-production workflow with your existing setup.
 
-```
-Local Development → Push to Git → Staging Deploy → Test → Production Deploy
-```
+## Prerequisites
+- ✅ Vercel account with existing deployment
+- ✅ GitHub repository connected to Vercel
+- ✅ All stability improvements implemented (Error Boundaries, defensive programming, etc.)
 
-## **🎯 Deployment Platform: Railway**
+## Deployment Workflow
 
-**Why Railway?**
-- ✅ Next.js + PostgreSQL optimized
-- ✅ Easy staging/production separation
-- ✅ Automatic deployments from Git
-- ✅ Built-in database backups
-- ✅ Simple environment management
+### 1. Staging Deployment (Preview)
+Vercel automatically creates preview deployments for every branch and pull request.
 
-## **📋 Prerequisites**
-
-1. **Git Repository** (you already have this)
-2. **Railway Account** - Sign up at [railway.app](https://railway.app)
-3. **Stability Improvements** committed (we'll do this now)
-
-## **🛠️ Step 1: Commit Stability Improvements**
-
+**Deploy Current Stability Branch:**
 ```bash
-# Add all our stability fixes
-git add .
-
-# Commit with descriptive message
-git commit -m "feat: implement comprehensive stability improvements
-
-- Add React Error Boundaries for crash prevention
-- Implement defensive programming throughout app
-- Fix dynamic server usage in API routes
-- Add safe localStorage and JSON operations
-- Prevent undefined property access crashes
-- Add comprehensive error logging
-
-Stability improvements include:
-- Global ErrorBoundary component
-- DataErrorBoundary for API errors  
-- Defensive programming utilities (lib/defensive.ts)
-- Safe array mapping and object access
-- Webpack cache corruption fixes
-- Rollback guides for all changes"
-
-# Push to your feature branch
+# Push your current branch for preview deployment
 git push origin feature/stability-improvements
 ```
 
-## **🚀 Step 2: Set Up Railway Staging Environment**
+This will automatically trigger a Vercel preview deployment at:
+`https://restaurant-growth-os-checklist-git-<branch-name>-<your-username>.vercel.app`
 
-### **2.1 Create Railway Project**
-1. Go to [railway.app](https://railway.app) and sign up
-2. Click **"New Project"**
-3. Select **"Deploy from GitHub repo"**
-4. Choose your Restaurant Growth OS repository
-5. Select the `feature/stability-improvements` branch
+### 2. Testing Staging Environment
 
-### **2.2 Add PostgreSQL Database**
-1. In your Railway project, click **"+ New Service"**
-2. Select **"Database"** → **"PostgreSQL"**
-3. Railway will automatically create a database
+**Test Key Functionality:**
+- [ ] Error boundary functionality (visit `/debug` and trigger test errors)
+- [ ] Checklist state persistence across page refreshes
+- [ ] Client switching functionality
+- [ ] API endpoints (`/api/google-ads`, `/api/meta-ads`)
+- [ ] Authentication flow
+- [ ] SOP generation and editing
 
-### **2.3 Configure Environment Variables**
-In Railway dashboard, go to your Next.js service → **Variables** tab:
+**Monitor for Issues:**
+- Check Vercel Functions logs in dashboard
+- Test localStorage operations
+- Verify no console errors
+- Confirm responsive design on mobile
 
-**Required Variables:**
+### 3. Production Deployment
+
+**Merge to Main (Production):**
 ```bash
-# Database (Railway will auto-populate these)
-DATABASE_URL=${{Postgres.DATABASE_URL}}
+# Switch to main and merge
+git checkout main
+git merge feature/stability-improvements
+git push origin main
+```
 
-# NextAuth Configuration
-NEXTAUTH_URL=https://your-staging-app.railway.app
-NEXTAUTH_SECRET=your-generated-secret-staging
+Vercel will automatically deploy to your production domain.
 
-# Optional: API Keys (for testing real data)
-META_ACCESS_TOKEN=your-meta-token
-META_APP_ID=your-meta-app-id  
-META_APP_SECRET=your-meta-app-secret
-GOOGLE_ADS_DEVELOPER_TOKEN=your-google-token
+## Environment Variables
+
+Ensure these are set in your Vercel dashboard:
+
+### Required for Production:
+```
+DATABASE_URL=postgresql://...
+NEXTAUTH_SECRET=your-production-secret
+NEXTAUTH_URL=https://your-domain.vercel.app
+```
+
+### Optional (for API features):
+```
 GOOGLE_ADS_CUSTOMER_ID=your-customer-id
+GOOGLE_ADS_DEVELOPER_TOKEN=your-dev-token
+GOOGLE_ADS_CLIENT_ID=your-client-id
+GOOGLE_ADS_CLIENT_SECRET=your-client-secret
+GOOGLE_ADS_REFRESH_TOKEN=your-refresh-token
+
+META_ACCESS_TOKEN=your-access-token
+META_APP_ID=your-app-id
+META_APP_SECRET=your-app-secret
 ```
 
-## **🧪 Step 3: Deploy to Staging**
+## Monitoring & Health Checks
 
-Railway will automatically deploy when you push to the connected branch.
+### Vercel Analytics
+Monitor your deployment through:
+- Vercel Dashboard → Analytics
+- Real User Monitoring (RUM)
+- Web Vitals tracking
 
-**Staging URL Example:** `https://your-app-name-staging.railway.app`
+### Error Monitoring
+Your implemented error boundaries will:
+- Log errors with unique IDs for tracking
+- Provide graceful fallbacks for users
+- Capture error details in console/logs
 
-### **3.1 Test Staging Deployment**
-- [ ] App loads without errors
-- [ ] Error Boundary test works (visit `/debug`)
-- [ ] Client creation/switching works
-- [ ] Checklist progress saves properly
-- [ ] All pages load correctly
-- [ ] Database connections work
+### Performance Monitoring
+- Check Vercel Speed Insights
+- Monitor function execution times
+- Review Web Vitals scores
 
-### **3.2 Database Migration**
-Railway runs Prisma migrations automatically, but verify:
+## Rollback Procedures
+
+### Quick Rollback via Vercel Dashboard:
+1. Go to Vercel Dashboard → Deployments
+2. Find previous working deployment
+3. Click "Promote to Production"
+
+### Git-based Rollback:
 ```bash
-# In Railway logs, you should see:
-# "Running prisma generate"
-# "Running prisma migrate deploy"
+# Find the commit hash of last working version
+git log --oneline
+
+# Create rollback commit
+git revert <commit-hash>
+git push origin main
 ```
 
-## **🌟 Step 4: Set Up Production Environment**
-
-### **4.1 Create Production Project**
-1. Create a **new Railway project** for production
-2. Connect to the **main** branch (not feature branch)
-3. Add PostgreSQL database
-4. Configure production environment variables
-
-### **4.2 Production Environment Variables**
+### Emergency Rollback:
 ```bash
-# Database
-DATABASE_URL=${{Postgres.DATABASE_URL}}
-
-# NextAuth (IMPORTANT: Different secret for production)
-NEXTAUTH_URL=https://your-production-domain.com
-NEXTAUTH_SECRET=your-production-secret-different-from-staging
-
-# Production API Keys
-META_ACCESS_TOKEN=your-production-meta-token
-# ... other production credentials
+# Hard reset to previous working commit (use carefully)
+git reset --hard <previous-commit-hash>
+git push --force origin main
 ```
 
-## **📋 Deployment Workflow**
+## Stability Features Deployed
 
-### **Daily Development:**
-```bash
-# 1. Work locally
-npm run dev
+✅ **Error Boundaries**: Comprehensive error handling with user-friendly fallbacks
+✅ **Defensive Programming**: Safe operations for localStorage, JSON parsing, array operations
+✅ **Webpack Configuration**: Prevents cache corruption issues
+✅ **API Route Fixes**: Eliminated dynamic server usage warnings
+✅ **TypeScript Safety**: Proper type checking and null safety
 
-# 2. Make changes, test locally
-# 3. Commit and push to feature branch
-git add .
-git commit -m "feat: add new feature"
-git push origin feature/stability-improvements
+## Post-Deployment Checklist
 
-# 4. Test automatically deploys to STAGING
-# 5. Test staging deployment
-# 6. If good, merge to main for PRODUCTION
-```
+### Immediate (within 5 minutes):
+- [ ] Visit production URL and verify homepage loads
+- [ ] Test user authentication
+- [ ] Check one checklist interaction
+- [ ] Verify no console errors
 
-### **Release to Production:**
-```bash
-# 1. Create Pull Request to main branch
-# 2. Review changes
-# 3. Merge to main
-# 4. Production automatically deploys
-```
+### Within 24 hours:
+- [ ] Monitor Vercel function logs for errors
+- [ ] Check analytics for user engagement
+- [ ] Verify error boundary reporting (if any errors occur)
+- [ ] Test from different devices/browsers
 
-## **🔍 Environment URLs**
+### Within 1 week:
+- [ ] Review performance metrics
+- [ ] Analyze error reports and patterns
+- [ ] Optimize based on real user data
 
-- **Local**: `http://localhost:3000`
-- **Staging**: `https://your-app-staging.railway.app`
-- **Production**: `https://your-app.railway.app` or custom domain
+## Troubleshooting
 
-## **📊 Database Management**
+### Common Issues:
 
-### **Staging Database:**
-- Test data, can be reset
-- Use for testing new features
-- Safe to experiment with
+**Build Failures:**
+- Check for TypeScript errors in Vercel build logs
+- Verify all environment variables are set
+- Review function bundle sizes
 
-### **Production Database:**
-- Real customer data
-- Automated backups
-- Never test directly here
+**Runtime Errors:**
+- Check Vercel Functions logs
+- Review error boundary logs
+- Verify database connectivity
 
-## **🛡️ Security Considerations**
+**Performance Issues:**
+- Review bundle size in build output
+- Check for unnecessary re-renders
+- Optimize images and assets
 
-1. **Different Secrets**: Use different NEXTAUTH_SECRET for each environment
-2. **API Keys**: Use test/sandbox keys for staging
-3. **Domain Verification**: Only production should use real domain
-4. **Environment Separation**: Keep staging and production completely separate
-
-## **📈 Monitoring & Logs**
-
-Railway provides:
-- **Real-time logs**: See console.log output
-- **Build logs**: See deployment process
-- **Metrics**: CPU, memory, request volume
-- **Database metrics**: Connection count, query performance
-
-## **🚨 Troubleshooting**
-
-### **Common Issues:**
-1. **Build Failures**: Check build logs in Railway
-2. **Database Connection**: Verify DATABASE_URL is set
-3. **Environment Variables**: Double-check all required vars
-4. **Port Issues**: Railway automatically handles ports
-
-### **Health Checks:**
-- **Staging**: Visit `/api/test-db` to verify database
-- **Production**: Monitor `/debug` page for errors
-
-## **🔄 Rollback Strategy**
-
-If production deployment fails:
-1. **Railway Dashboard**: Deploy previous successful build
-2. **Git Revert**: Revert commits and redeploy
-3. **Database**: Restore from backup if needed
-
-## **💰 Cost Estimation**
-
-**Railway Pricing:**
-- **Hobby Plan**: $5/month per service (staging)
-- **Pro Plan**: $20/month per service (production)
-- **Database**: Included in plan
-- **Bandwidth**: Generous limits
-
-**Total Monthly Cost:** ~$25-45 for staging + production
+### Support Resources:
+- Vercel Documentation: https://vercel.com/docs
+- Next.js Deployment: https://nextjs.org/docs/deployment
+- This project's error boundaries will provide detailed error IDs for support
 
 ---
 
-## **🎯 Next Steps After Deployment**
+## Quick Commands Reference
 
-1. **Custom Domain**: Point your domain to production
-2. **SSL Certificate**: Automatic with Railway
-3. **Monitoring**: Set up error tracking (Sentry)
-4. **Analytics**: Add usage tracking
-5. **Backup Strategy**: Configure automated backups
+```bash
+# Deploy staging branch
+git push origin feature/stability-improvements
 
-**Your app will be production-ready with proper staging environment!** 🚀 
+# Deploy to production
+git checkout main
+git merge feature/stability-improvements
+git push origin main
+
+# Check deployment status
+npx vercel --help
+
+# View production logs
+npx vercel logs <deployment-url>
+``` 
