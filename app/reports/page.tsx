@@ -1131,6 +1131,23 @@ function KeywordsTab({ keywords, demo }: { keywords: KeywordPerformance[]; demo:
 
 // Meta Tab Component
 function MetaTab({ metaData }: { metaData: MetaAdsData | null }) {
+  if (!metaData || !metaData.insights) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+        <Users className="w-16 h-16 mb-4" />
+        <h3 className="text-xl font-semibold">Meta Insights Not Available</h3>
+        <p>This client may not have Meta Ads data connected or data is still processing.</p>
+      </div>
+    );
+  }
+
+  const platformData = [
+    { name: 'Facebook', value: metaData.insights.platformBreakdown.facebook.spend, conversions: metaData.insights.platformBreakdown.facebook.conversions },
+    { name: 'Instagram', value: metaData.insights.platformBreakdown.instagram.spend, conversions: metaData.insights.platformBreakdown.instagram.conversions },
+    { name: 'Messenger', value: metaData.insights.platformBreakdown.messenger.spend, conversions: metaData.insights.platformBreakdown.messenger.conversions },
+    { name: 'Audience Network', value: metaData.insights.platformBreakdown.audienceNetwork.spend, conversions: metaData.insights.platformBreakdown.audienceNetwork.conversions },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg">
@@ -1147,54 +1164,19 @@ function MetaTab({ metaData }: { metaData: MetaAdsData | null }) {
               </tr>
             </thead>
             <tbody>
-              {metaData && (
-                <>
-                  <tr className="border-b border-slate-100 dark:border-slate-700">
-                    <td className="py-3 px-4">
-                      <div className="font-medium text-slate-800 dark:text-slate-100">Facebook</div>
-                    </td>
-                    <td className="text-right py-3 px-4 text-slate-700 dark:text-slate-300">
-                      {formatMetaCost(metaData.insights.platformBreakdown.facebook.spend)}
-                    </td>
-                    <td className="text-right py-3 px-4 text-slate-700 dark:text-slate-300">
-                      {formatNumber(metaData.insights.platformBreakdown.facebook.conversions)}
-                    </td>
-                  </tr>
-                  <tr className="border-b border-slate-100 dark:border-slate-700">
-                    <td className="py-3 px-4">
-                      <div className="font-medium text-slate-800 dark:text-slate-100">Instagram</div>
-                    </td>
-                    <td className="text-right py-3 px-4 text-slate-700 dark:text-slate-300">
-                      {formatMetaCost(metaData.insights.platformBreakdown.instagram.spend)}
-                    </td>
-                    <td className="text-right py-3 px-4 text-slate-700 dark:text-slate-300">
-                      {formatNumber(metaData.insights.platformBreakdown.instagram.conversions)}
-                    </td>
-                  </tr>
-                  <tr className="border-b border-slate-100 dark:border-slate-700">
-                    <td className="py-3 px-4">
-                      <div className="font-medium text-slate-800 dark:text-slate-100">Messenger</div>
-                    </td>
-                    <td className="text-right py-3 px-4 text-slate-700 dark:text-slate-300">
-                      {formatMetaCost(metaData.insights.platformBreakdown.messenger.spend)}
-                    </td>
-                    <td className="text-right py-3 px-4 text-slate-700 dark:text-slate-300">
-                      {formatNumber(metaData.insights.platformBreakdown.messenger.conversions)}
-                    </td>
-                  </tr>
-                  <tr className="border-b border-slate-100 dark:border-slate-700">
-                    <td className="py-3 px-4">
-                      <div className="font-medium text-slate-800 dark:text-slate-100">Audience Network</div>
-                    </td>
-                    <td className="text-right py-3 px-4 text-slate-700 dark:text-slate-300">
-                      {formatMetaCost(metaData.insights.platformBreakdown.audienceNetwork.spend)}
-                    </td>
-                    <td className="text-right py-3 px-4 text-slate-700 dark:text-slate-300">
-                      {formatNumber(metaData.insights.platformBreakdown.audienceNetwork.conversions)}
-                    </td>
-                  </tr>
-                </>
-              )}
+              {platformData.map((platform, index) => (
+                <tr key={index} className="border-b border-slate-100 dark:border-slate-700">
+                  <td className="py-3 px-4">
+                    <div className="font-medium text-slate-800 dark:text-slate-100">{platform.name}</div>
+                  </td>
+                  <td className="text-right py-3 px-4 text-slate-700 dark:text-slate-300">
+                    {formatMetaCost(platform.value)}
+                  </td>
+                  <td className="text-right py-3 px-4 text-slate-700 dark:text-slate-300">
+                    {formatNumber(platform.conversions)}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
