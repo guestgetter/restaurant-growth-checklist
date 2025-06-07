@@ -529,28 +529,28 @@ export default function ReportsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+    <div className="min-h-[100dvh] bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       {/* Header */}
       <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-700/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-slate-100 dark:to-slate-300 bg-clip-text text-transparent">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-slate-100 dark:to-slate-300 bg-clip-text text-transparent">
                 Reports & Insights Generator
               </h1>
-              <p className="text-slate-600 dark:text-slate-400 mt-1">
+              <p className="text-slate-600 dark:text-slate-400 mt-1 text-sm sm:text-base">
                 {currentClient?.name} - Google Ads Performance Dashboard
                 {demo && <span className="ml-2 text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded">Demo Mode</span>}
               </p>
             </div>
 
             {/* Date Range Selector */}
-            <div className="flex items-center gap-2">
-              <Calendar size={20} className="text-slate-500" />
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Calendar size={20} className="text-slate-500 hidden sm:block" />
               <select
                 value={dateRange}
                 onChange={(e) => setDateRange(e.target.value as any)}
-                className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm"
+                className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm min-h-[44px]"
               >
                 <option value="today">Today</option>
                 <option value="7d">Last 7 days</option>
@@ -566,14 +566,14 @@ export default function ReportsPage() {
               </select>
               <button
                 onClick={() => exportData('csv')}
-                className="flex items-center gap-2 p-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors"
+                className="flex items-center justify-center gap-2 p-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors min-h-[44px] min-w-[44px]"
                 title="Export as CSV"
               >
                 <Download size={16} />
               </button>
               <button
                 onClick={fetchGoogleAdsData}
-                className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+                className="flex items-center justify-center p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors min-h-[44px] min-w-[44px]"
               >
                 <RefreshCw size={16} />
               </button>
@@ -581,20 +581,20 @@ export default function ReportsPage() {
           </div>
 
           {/* Tab Navigation */}
-          <div className="mt-6 border-b border-slate-200 dark:border-slate-700">
-            <div className="flex space-x-8">
+          <div className="mt-4 sm:mt-6 border-b border-slate-200 dark:border-slate-700">
+            <div className="flex space-x-4 sm:space-x-8 overflow-x-auto pb-2">
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center gap-2 py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  className={`flex items-center gap-2 py-2 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap min-h-[44px] ${
                     activeTab === tab.id
                       ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                       : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
                   }`}
                 >
-                  <tab.icon size={16} />
-                  {tab.name}
+                  <tab.icon size={16} className="flex-shrink-0" />
+                  <span className="hidden sm:inline">{tab.name}</span>
                 </button>
               ))}
             </div>
@@ -603,7 +603,7 @@ export default function ReportsPage() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
         {activeTab === 'overview' && (
           <OverviewTab 
             campaigns={campaigns}
@@ -642,7 +642,7 @@ function OverviewTab({ campaigns, keywords, insights, demo }: { campaigns: Campa
   return (
     <div className="space-y-6">
       {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <MetricCard
           title="Total Ad Spend"
           value={`$${insights.totalSpend.toFixed(2)}`}
@@ -1310,13 +1310,13 @@ interface MetricCardProps {
 
 function MetricCard({ title, value, icon }: MetricCardProps) {
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg">
+    <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 sm:p-6 shadow-lg">
       <div className="flex items-center justify-between">
-        <div className="text-slate-500 dark:text-slate-400">
+        <div className="text-slate-500 dark:text-slate-400 flex-shrink-0">
           {icon}
         </div>
-        <div className="mt-4">
-          <div className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+        <div className="text-right min-w-0 flex-1 ml-4">
+          <div className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100 truncate">
             {value}
           </div>
           <div className="text-sm text-slate-600 dark:text-slate-400">

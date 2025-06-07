@@ -1,0 +1,65 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id    String @id @default(cuid())
+  email String @unique
+  role  String @default("team")
+}
+
+model Client {
+  id                    String   @id @default(cuid())
+  name                  String
+  logo                  String?
+  googleAdsCustomerId   String?
+  metaAdsAccountId      String?
+  checklistItems        ChecklistItem[]
+}
+
+model ChecklistSection {
+  id          String   @id
+  title       String
+  emoji       String
+  description String
+  items       ChecklistItem[]
+}
+
+model ChecklistItem {
+  id                  String   @id @default(cuid())
+  originalId          String // e.g., 'onboarding-1'
+  text                String
+  completed           Boolean  @default(false)
+  description         String?
+  
+  client              Client   @relation(fields: [clientId], references: [id])
+  clientId            String
+
+  section             ChecklistSection @relation(fields: [sectionId], references: [id])
+  sectionId           String
+
+  subTasks            ChecklistSubTask[]
+}
+
+model ChecklistSubTask {
+  id                  String   @id @default(cuid())
+  originalId          String // e.g., 'onboarding-1-1'
+  text                String
+  completed           Boolean  @default(false)
+  
+  item                ChecklistItem @relation(fields: [checklistItemId], references: [id])
+  checklistItemId     String
+}

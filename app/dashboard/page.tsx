@@ -321,31 +321,32 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto w-full">
       {/* Header with Controls */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-3">
-            <BarChart3 className="text-blue-600" size={32} />
-            Growth Operating System
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-3">
+            <BarChart3 className="text-blue-600 flex-shrink-0" size={32} />
+            <span className="truncate">Growth Operating System</span>
           </h1>
-          <p className="text-slate-600 dark:text-slate-400 mt-1">
+          <p className="text-slate-600 dark:text-slate-400 mt-1 text-sm sm:text-base">
             Your control center for performance, readiness, and data accuracy
           </p>
         </div>
         
         {/* Data Entry Mode Toggle */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-shrink-0">
           <button
             onClick={() => setIsDataEntryMode(!isDataEntryMode)}
-            className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
+            className={`px-3 sm:px-4 py-2 rounded-lg transition-colors flex items-center gap-2 text-sm ${
               isDataEntryMode 
                 ? 'bg-blue-600 text-white' 
                 : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
             }`}
           >
-            <Edit3 size={16} />
-            {isDataEntryMode ? 'Exit Edit Mode' : 'Edit Data'}
+            <Edit3 size={16} className="flex-shrink-0" />
+            <span className="hidden sm:inline">{isDataEntryMode ? 'Exit Edit Mode' : 'Edit Data'}</span>
+            <span className="sm:hidden">{isDataEntryMode ? 'Exit' : 'Edit'}</span>
           </button>
         </div>
       </div>
@@ -353,22 +354,22 @@ export default function DashboardPage() {
       {/* Date Range Selector */}
       <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
         <div className="flex items-center gap-2 mb-3">
-          <Calendar className="text-slate-500" size={16} />
+          <Calendar className="text-slate-500 flex-shrink-0" size={16} />
           <span className="font-medium text-slate-800 dark:text-slate-100">Time Period</span>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:flex-wrap">
           {dateRanges.map(range => (
             <button
               key={range.id}
               onClick={() => setSelectedDateRange(range.id)}
-              className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+              className={`px-3 py-2 rounded-lg text-sm transition-colors text-center ${
                 selectedDateRange === range.id
                   ? 'bg-blue-600 text-white'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'
               }`}
             >
               <div className="font-medium">{range.label}</div>
-              <div className="text-xs opacity-75">{range.description}</div>
+              <div className="text-xs opacity-75 hidden sm:block">{range.description}</div>
             </button>
           ))}
         </div>
@@ -399,7 +400,7 @@ export default function DashboardPage() {
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {Object.entries(primaryMetricsData).map(([key, { metric, checklist, benchmarkCategory, actionSteps }]) => {
             const isExpanded = expandedMetrics.has(key);
             const isEditing = editingMetric === key;
@@ -411,8 +412,8 @@ export default function DashboardPage() {
                   className="p-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50"
                   onClick={() => !isEditing && toggleMetric(key)}
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold text-slate-800 dark:text-slate-100 text-sm">
+                  <div className="flex items-start sm:items-center justify-between mb-2 gap-2">
+                    <h3 className="font-semibold text-slate-800 dark:text-slate-100 text-sm flex-1 leading-tight">
                       {key === 'gac' && 'Guest Acquisition Cost'}
                       {key === 'ltv' && 'Guest Lifetime Value'}
                       {key === 'repeatRate' && 'Repeat Visit Rate'}
@@ -421,19 +422,25 @@ export default function DashboardPage() {
                       {key === 'membershipGrowth' && 'Membership Growth'}
                       {key === 'costPerOptIn' && 'Cost Per Opt-In'}
                     </h3>
-                    {!isEditing && (isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />)}
+                    {!isEditing && (
+                      <div className="flex-shrink-0">
+                        {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                      </div>
+                    )}
                   </div>
                   
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center justify-between mb-3 gap-2">
                     {isEditing && isDataEntryMode ? (
-                      <EditableMetricValue 
-                        value={metric.value.toString()}
-                        onSave={(newValue, notes) => handleMetricEdit(key, newValue, notes)}
-                        onCancel={() => setEditingMetric(null)}
-                      />
+                      <div className="flex-1">
+                        <EditableMetricValue 
+                          value={metric.value.toString()}
+                          onSave={(newValue, notes) => handleMetricEdit(key, newValue, notes)}
+                          onCancel={() => setEditingMetric(null)}
+                        />
+                      </div>
                     ) : (
                       <span 
-                        className={`text-2xl font-bold text-slate-900 dark:text-slate-100 ${
+                        className={`text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100 flex-1 ${
                           isDataEntryMode ? 'cursor-pointer hover:bg-yellow-100 rounded px-1' : ''
                         }`}
                         onClick={(e) => {
@@ -447,7 +454,7 @@ export default function DashboardPage() {
                       </span>
                     )}
                     
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 flex-shrink-0">
                       {getTrendIcon(metric.trend, metric.change)}
                       <span className={`text-sm ${metric.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                         {metric.change >= 0 ? '+' : ''}{metric.change}%
@@ -455,11 +462,11 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between mb-2">
-                    <div className={`text-xs px-2 py-1 rounded ${completionPercentage === 100 ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                  <div className="flex items-center justify-between mb-2 gap-2">
+                    <div className={`text-xs px-2 py-1 rounded flex-shrink-0 ${completionPercentage === 100 ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
                       {completionPercentage}% Setup
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 flex-shrink-0">
                       {getDataSourceIcon(metric.dataSource)}
                       <span className="text-xs text-slate-500 dark:text-slate-400">
                         {metric.dataSource}

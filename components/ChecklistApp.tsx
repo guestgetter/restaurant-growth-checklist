@@ -381,24 +381,24 @@ export default function ChecklistApp() {
     : sections.filter(section => section.id === currentView);
 
   return (
-    <div className="h-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 transition-colors duration-300">
+    <div className="h-full min-h-[100dvh] bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 transition-colors duration-300">
       {/* Checklist Header */}
       <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-700/50 transition-colors duration-300">
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-center sm:text-left">
-              <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-slate-100 dark:to-slate-300 bg-clip-text text-transparent">
+            <div className="text-center sm:text-left min-w-0 flex-1">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-slate-100 dark:to-slate-300 bg-clip-text text-transparent">
                 Growth System Checklist
               </h1>
-              <p className="text-slate-600 dark:text-slate-400 text-sm sm:text-base">
-                {currentClient.name} - Your comprehensive roadmap to restaurant success
+              <p className="text-slate-600 dark:text-slate-400 text-sm sm:text-base truncate">
+                {currentClient?.name} - Your comprehensive roadmap to restaurant success
               </p>
             </div>
             
             {/* Progress Circle */}
-            <div className="relative">
-              <div className="w-20 h-20 relative">
-                <svg className="w-20 h-20 transform -rotate-90" viewBox="0 0 100 100">
+            <div className="relative flex-shrink-0">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 relative">
+                <svg className="w-16 h-16 sm:w-20 sm:h-20 transform -rotate-90" viewBox="0 0 100 100">
                   <circle
                     cx="50"
                     cy="50"
@@ -427,56 +427,56 @@ export default function ChecklistApp() {
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-lg font-bold text-slate-700 dark:text-slate-200">{progressPercentage}%</span>
+                  <span className="text-sm sm:text-lg font-bold text-slate-700 dark:text-slate-200">{progressPercentage}%</span>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap gap-2 mt-4">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 mt-4">
             <button
               onClick={toggleDarkMode}
-              className="flex items-center gap-2 px-3 py-2 bg-slate-600 dark:bg-slate-700 text-white rounded-lg hover:bg-slate-700 dark:hover:bg-slate-600 transition-colors text-sm"
+              className="flex items-center justify-center gap-2 px-3 py-2 bg-slate-600 dark:bg-slate-700 text-white rounded-lg hover:bg-slate-700 dark:hover:bg-slate-600 transition-colors text-sm min-h-[44px]"
             >
-              {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
-              {isDarkMode ? 'Light' : 'Dark'}
+              <span className="flex-shrink-0">{isDarkMode ? <Sun size={16} /> : <Moon size={16} />}</span>
+              <span className="hidden sm:inline">{isDarkMode ? 'Light' : 'Dark'}</span>
             </button>
             <button
               onClick={() => setShowStats(!showStats)}
-              className="flex items-center gap-2 px-3 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-500 transition-colors text-sm"
+              className="flex items-center justify-center gap-2 px-3 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-500 transition-colors text-sm min-h-[44px]"
             >
-              <BarChart3 size={16} />
-              Stats
+              <BarChart3 size={16} className="flex-shrink-0" />
+              <span className="hidden sm:inline">Stats</span>
             </button>
             <button
               onClick={exportProgress}
-              className="flex items-center gap-2 px-3 py-2 bg-green-500 dark:bg-green-600 text-white rounded-lg hover:bg-green-600 dark:hover:bg-green-500 transition-colors text-sm"
+              className="flex items-center justify-center gap-2 px-3 py-2 bg-green-500 dark:bg-green-600 text-white rounded-lg hover:bg-green-600 dark:hover:bg-green-500 transition-colors text-sm min-h-[44px]"
             >
-              <Download size={16} />
-              Export
+              <Download size={16} className="flex-shrink-0" />
+              <span className="hidden sm:inline">Export</span>
             </button>
             <button
               onClick={shareProgress}
-              className="flex items-center gap-2 px-3 py-2 bg-purple-500 dark:bg-purple-600 text-white rounded-lg hover:bg-purple-600 dark:hover:bg-purple-500 transition-colors text-sm"
+              className="flex items-center justify-center gap-2 px-3 py-2 bg-purple-500 dark:bg-purple-600 text-white rounded-lg hover:bg-purple-600 dark:hover:bg-purple-500 transition-colors text-sm min-h-[44px]"
             >
-              <Share2 size={16} />
-              Share
+              <Share2 size={16} className="flex-shrink-0" />
+              <span className="hidden sm:inline">Share</span>
             </button>
             <button
               onClick={resetProgress}
-              className="flex items-center gap-2 px-3 py-2 bg-red-500 dark:bg-red-600 text-white rounded-lg hover:bg-red-600 dark:hover:bg-red-500 transition-colors text-sm"
+              className="flex items-center justify-center gap-2 px-3 py-2 bg-red-500 dark:bg-red-600 text-white rounded-lg hover:bg-red-600 dark:hover:bg-red-500 transition-colors text-sm min-h-[44px] col-span-2 sm:col-span-1"
             >
-              <RotateCcw size={16} />
-              Reset
+              <RotateCcw size={16} className="flex-shrink-0" />
+              <span className="hidden sm:inline">Reset</span>
             </button>
           </div>
 
           {/* Section Navigation */}
-          <div className="flex flex-wrap gap-2 mt-4">
+          <div className="flex flex-wrap gap-2 mt-4 overflow-x-auto pb-2">
             <button
               onClick={() => setCurrentView('all')}
-              className={`px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
+              className={`px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm font-medium whitespace-nowrap min-h-[44px] ${
                 currentView === 'all' 
                   ? 'bg-slate-800 dark:bg-slate-600 text-white' 
                   : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
@@ -488,15 +488,15 @@ export default function ChecklistApp() {
               <button
                 key={section.id}
                 onClick={() => setCurrentView(section.id)}
-                className={`px-4 py-2 rounded-lg transition-colors text-sm font-medium flex items-center gap-2 ${
+                className={`px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm font-medium flex items-center gap-2 whitespace-nowrap min-h-[44px] ${
                   currentView === section.id 
                     ? 'bg-slate-800 dark:bg-slate-600 text-white' 
                     : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
                 }`}
               >
-                <span>{section.emoji}</span>
+                <span className="flex-shrink-0">{section.emoji}</span>
                 <span className="hidden sm:inline">{section.title}</span>
-                <span className="text-xs bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-200 px-2 py-1 rounded">
+                <span className="text-xs bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-200 px-2 py-1 rounded flex-shrink-0">
                   {getSectionProgress(section)}%
                 </span>
               </button>
@@ -539,8 +539,8 @@ export default function ChecklistApp() {
       </AnimatePresence>
 
       {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="grid gap-8">
+      <div className="max-w-6xl mx-auto px-4 py-4 sm:py-8">
+        <div className="grid gap-4 sm:gap-8">
           {filteredSections.map((section, sectionIndex) => (
             <motion.div
               key={section.id}
@@ -550,19 +550,19 @@ export default function ChecklistApp() {
               className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200/50 dark:border-slate-700/50 overflow-hidden checklist-card transition-colors duration-300"
             >
               {/* Section Header */}
-              <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-600 p-6 border-b border-slate-200/50 dark:border-slate-600/50">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center text-2xl shadow-md">
+              <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-600 p-4 sm:p-6 border-b border-slate-200/50 dark:border-slate-600/50">
+                <div className="flex items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center text-xl sm:text-2xl shadow-md flex-shrink-0">
                       {section.emoji}
                     </div>
-                    <div>
-                      <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">{section.title}</h2>
-                      <p className="text-slate-600 dark:text-slate-300 text-sm">{section.description}</p>
+                    <div className="min-w-0 flex-1">
+                      <h2 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-100 leading-tight">{section.title}</h2>
+                      <p className="text-slate-600 dark:text-slate-300 text-sm leading-tight">{section.description}</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+                  <div className="text-right flex-shrink-0">
+                    <div className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100">
                       {getSectionProgress(section)}%
                     </div>
                     <div className="text-sm text-slate-600 dark:text-slate-400">
@@ -585,7 +585,7 @@ export default function ChecklistApp() {
               </div>
 
               {/* Section Items */}
-              <div className="p-6">
+              <div className="p-4 sm:p-6">
                 <div className="space-y-3">
                   {section.items.map((item, itemIndex) => (
                     <motion.div

@@ -31,7 +31,7 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
   // Show loading spinner while checking authentication
   if (status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+      <div className="min-h-screen min-h-[100dvh] flex items-center justify-center bg-slate-50 dark:bg-slate-900">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
           <p className="text-slate-600 dark:text-slate-400">Loading...</p>
@@ -48,7 +48,7 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
   // Show loading while redirecting to sign-in
   if (!session) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+      <div className="min-h-screen min-h-[100dvh] flex items-center justify-center bg-slate-50 dark:bg-slate-900">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
           <p className="text-slate-600 dark:text-slate-400">Redirecting to sign in...</p>
@@ -59,9 +59,9 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
 
   // Show authenticated app with sidebar
   return (
-    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div className="flex min-h-screen min-h-[100dvh] bg-slate-50 dark:bg-slate-900">
       <Sidebar />
-      <main className="flex-1 overflow-hidden">
+      <main className="flex-1 w-full lg:w-auto overflow-x-hidden">
         {children}
       </main>
     </div>
