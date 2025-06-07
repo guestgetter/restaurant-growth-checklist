@@ -26,6 +26,11 @@ export interface ChecklistSection {
   items: ChecklistItem[];
 }
 
+export interface ChecklistProgress {
+  itemId: string;
+  subTaskIds: string[];
+}
+
 export const checklistData: ChecklistSection[] = [
   {
     id: 'onboarding',
