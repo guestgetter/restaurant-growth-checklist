@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:migrate": "npx prisma migrate dev",
+    "db:generate": "npx prisma generate",
+    "db:studio": "npx prisma studio",
+    "migrate:localStorage": "npx tsx scripts/migrate-localstorage.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.9.1",

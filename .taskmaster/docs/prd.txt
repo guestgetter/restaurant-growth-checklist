@@ -1,0 +1,170 @@
+# Restaurant Growth OS - Postgres Migration PRD
+
+## Project Overview
+Migrate the stable localStorage-based Restaurant Growth OS Checklist application to PostgreSQL persistence using Prisma ORM while maintaining 100% feature parity and zero downtime.
+
+## Current State
+- Stable Next.js application deployed on Vercel
+- localStorage-based data storage (clients, progress, analytics)
+- Prisma already configured with basic schema
+- NextAuth integration ready
+- Complex checklist system with progress tracking
+- Google Ads and Meta Ads integrations
+- Rich client management features
+
+## Goals
+1. **Zero Breaking Changes**: Maintain all existing functionality
+2. **Feature Branch Development**: Proper Git workflow with thorough testing
+3. **Database Migration**: Complete localStorage → Postgres migration
+4. **Data Integrity**: Preserve all existing client data and progress
+5. **Performance**: Maintain or improve application performance
+6. **Scalability**: Support multi-user/multi-tenant architecture
+
+## Technical Requirements
+
+### Database Schema Design
+1. **Enhanced Client Model**
+   - Complete Client profile with all current localStorage fields
+   - Location, branding, contact information
+   - Google Ads/Meta Ads integration data
+   - Account management fields
+
+2. **Checklist System**
+   - ChecklistSection model for organizing checklist categories
+   - ChecklistItem model with rich metadata
+   - ChecklistSubTask model for granular tracking
+   - Progress tracking per client per item/subtask
+
+3. **Progress & Analytics**
+   - Client-specific progress tracking
+   - Historical progress data
+   - Analytics and metrics storage
+   - Engagement events and action items
+
+4. **Multi-tenant Support**
+   - User-based access control
+   - Client-user relationships
+   - Role-based permissions (account manager, fulfillment)
+
+### Migration Strategy
+1. **Schema-First Approach**
+   - Design complete Prisma schema
+   - Generate migrations
+   - Seed development database
+
+2. **Dual-Write Implementation**
+   - Write to both localStorage and database during transition
+   - Read from database with localStorage fallback
+   - Gradual migration of read operations
+
+3. **Data Migration Tools**
+   - Export utility for localStorage data
+   - Import utility for seeding database
+   - Validation tools for data integrity
+
+4. **Testing Strategy**
+   - Unit tests for all database operations
+   - Integration tests for migration utilities
+   - End-to-end tests for critical user flows
+   - Performance testing for large datasets
+
+### API Layer
+1. **Database Abstraction**
+   - Create database service layer
+   - Implement CRUD operations for all models
+   - Handle relationships and complex queries
+   - Error handling and fallback mechanisms
+
+2. **Migration Utilities**
+   - localStorage export functionality
+   - Database import functionality
+   - Data validation and integrity checks
+   - Progress tracking for migration status
+
+### User Experience
+1. **Seamless Transition**
+   - No user-facing changes during migration
+   - Automatic data migration on first database connection
+   - Fallback to localStorage if database unavailable
+   - Clear migration status indicators
+
+2. **Data Backup & Recovery**
+   - Export functionality for user data
+   - Import functionality for data restoration
+   - Migration rollback capabilities
+
+## Implementation Phases
+
+### Phase 1: Enhanced Schema Design (Week 1)
+- Design comprehensive Prisma schema
+- Create and test database migrations
+- Set up development database environment
+- Implement basic CRUD operations
+
+### Phase 2: Migration Infrastructure (Week 1-2)
+- Build migration utilities (export/import)
+- Create database service layer
+- Implement dual-write mechanism
+- Add comprehensive error handling
+
+### Phase 3: Feature Migration (Week 2)
+- Migrate client management functionality
+- Migrate checklist progress tracking
+- Migrate analytics and reporting features
+- Implement data validation
+
+### Phase 4: Testing & Quality Assurance (Week 2-3)
+- Comprehensive testing suite
+- Performance optimization
+- Migration testing with real data
+- Security review and hardening
+
+### Phase 5: Deployment & Monitoring (Week 3)
+- Feature branch deployment
+- Production migration strategy
+- Monitoring and alerting setup
+- Rollback procedures
+
+## Success Criteria
+1. **Functionality**: 100% feature parity with localStorage version
+2. **Performance**: No degradation in application performance
+3. **Data Integrity**: Zero data loss during migration
+4. **User Experience**: Seamless transition for end users
+5. **Scalability**: Support for multiple users and large datasets
+6. **Reliability**: Robust error handling and fallback mechanisms
+
+## Risk Mitigation
+1. **Data Loss Prevention**: Multiple backup strategies and validation
+2. **Performance Issues**: Thorough testing and optimization
+3. **Migration Failures**: Comprehensive rollback procedures
+4. **User Disruption**: Feature branch development and testing
+5. **Database Connection Issues**: Fallback to localStorage mechanism
+
+## Technical Specifications
+
+### Database Models
+- User (authentication and authorization)
+- Client (restaurant client profiles)
+- ChecklistSection (onboarding, magnet, convert, keep phases)
+- ChecklistItem (individual checklist items)
+- ChecklistSubTask (granular subtasks)
+- ClientProgress (tracking completion status)
+- GrowthMetrics (analytics and performance data)
+- EngagementEvent (client interactions and meetings)
+- ActionItem (tasks and follow-ups)
+
+### Key Features
+- Multi-tenant client management
+- Complex checklist system with progress tracking
+- Analytics dashboard with Google Ads/Meta Ads integration
+- Reporting and export functionality
+- User authentication and authorization
+- Data migration and backup utilities
+
+## Deliverables
+1. Enhanced Prisma schema with all required models
+2. Database migration utilities (export/import)
+3. Database service layer with CRUD operations
+4. Comprehensive testing suite
+5. Migration documentation and procedures
+6. Deployment and rollback strategies 

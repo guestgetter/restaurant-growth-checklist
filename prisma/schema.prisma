@@ -4,6 +4,9 @@
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
+// Restaurant Growth OS Database Schema
+// Comprehensive schema to handle all localStorage migration
+
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["driverAdapters"]
@@ -15,51 +18,222 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+// User model for multi-tenant support
 model User {
   id    String @id @default(cuid())
   email String @unique
+  name  String?
   role  String @default("team")
+  
+  // Relations
+  clients Client[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
+// Enhanced Client model - handles all localStorage client data
 model Client {
-  id                    String   @id @default(cuid())
-  name                  String
-  logo                  String?
-  googleAdsCustomerId   String?
-  metaAdsAccountId      String?
-  checklistItems        ChecklistItem[]
+  id   String @id @default(cuid())
+  name String
+  
+  // Restaurant details
+  type              String // 'fast-casual' | 'fine-dining' | 'quick-service' | 'cafe' | 'catering' | 'food-truck'
+  industry          String? // Legacy field for backward compatibility
+  logo              String?
+  
+  // Location data (stored as JSON)
+  location          Json // { city, state, country }
+  
+  // Management
+  accountManager     String
+  fulfillmentManager String
+  onboardingDate     String
+  currentPhase      String // 'onboarding' | 'magnet' | 'convert' | 'keep' | 'optimization'
+  
+  // Integration IDs
+  googleAdsCustomerId String?
+  metaAdsAccountId    String?
+  
+  // Business goals and targeting
+  dreamCaseStudyGoal String
+  targetAudience     String
+  topCompetitors     Json   // string[]
+  
+  // Revenue data
+  monthlyRevenue     Float?
+  averageOrderValue  Float?
+  
+  // Branding and contact (JSON for flexibility)
+  branding Json @default("{\"primaryColor\": \"#3B82F6\", \"secondaryColor\": \"#1E40AF\", \"fontFamily\": \"Inter\"}")
+  contact  Json @default("{\"email\": \"\", \"phone\": \"\", \"address\": \"\"}")
+  
+  // Platform access data (JSON)
+  platformAccess Json?
+  technicalSetup Json?
+  
+  // Current state metrics (JSON)
+  currentState Json?
+  
+  // Status
+  status String @default("active") // 'active' | 'inactive'
+  
+  // Relations
+  user              User?   @relation(fields: [userId], references: [id])
+  userId            String?
+  checklistProgress ClientProgress[]
+  growthMetrics     GrowthMetric[]
+  engagementEvents  EngagementEvent[]
+  actionItems       ActionItem[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
+// Checklist progress tracking - handles localStorage progress data
+model ClientProgress {
+  id       String @id @default(cuid())
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId String
+  
+  // Progress data as arrays (matches localStorage format)
+  completedItems    String[] @default([])
+  completedSubtasks String[] @default([])
+  
+  // Additional metadata
+  progressPercentage Float?
+  lastItemCompleted  String?
+  lastCompletedAt    DateTime?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([clientId])
+}
+
+// Growth metrics storage
+model GrowthMetric {
+  id       String @id @default(cuid())
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId String
+  
+  // Metric details
+  name               String
+  category           String // 'primary' | 'secondary'
+  value              Float?
+  unit               String
+  dataQualityScore   Int    // 1-5
+  trend              String // 'up' | 'down' | 'stable' | 'unknown'
+  targetValue        Float?
+  
+  // Metadata
+  lastUpdated DateTime?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Engagement events (calls, meetings, etc.)
+model EngagementEvent {
+  id       String @id @default(cuid())
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId String
+  
+  // Event details
+  type          String   // 'pulse-call' | 'strategic-call' | 'deep-dive' | 'onboarding' | 'review'
+  scheduledDate DateTime
+  completedDate DateTime?
+  status        String   // 'scheduled' | 'completed' | 'cancelled' | 'rescheduled'
+  
+  // Event data (JSON for flexibility)
+  attendees Json  @default("[]")     // string[]
+  agenda    Json  @default("[]")     // string[]
+  notes     String?
+  
+  // Relations
+  actionItems ActionItem[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Action items and tasks
+model ActionItem {
+  id       String @id @default(cuid())
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId String
+  
+  // Optional relation to engagement event
+  engagementEvent   EngagementEvent? @relation(fields: [engagementEventId], references: [id])
+  engagementEventId String?
+  
+  // Action item details
+  description   String
+  assignedTo    String
+  dueDate       DateTime
+  status        String   // 'pending' | 'in-progress' | 'completed' | 'overdue'
+  priority      String   // 'high' | 'medium' | 'low'
+  
+  // Optional relations to phases/metrics
+  relatedPhase  String?
+  relatedMetric String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Static checklist structure (for reference and future expansion)
 model ChecklistSection {
-  id          String   @id
+  id          String @id // 'onboarding', 'magnet', 'convert', 'keep'
   title       String
   emoji       String
   description String
-  items       ChecklistItem[]
+  order       Int    @default(0)
+  
+  // Relations
+  items ChecklistItem[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ChecklistItem {
-  id                  String   @id @default(cuid())
-  originalId          String // e.g., 'onboarding-1'
-  text                String
-  completed           Boolean  @default(false)
-  description         String?
+  id         String @id @default(cuid())
+  originalId String // e.g., 'onboarding-1' (matches localStorage IDs)
   
-  client              Client   @relation(fields: [clientId], references: [id])
-  clientId            String
-
-  section             ChecklistSection @relation(fields: [sectionId], references: [id])
-  sectionId           String
-
-  subTasks            ChecklistSubTask[]
+  // Item details
+  title       String
+  description String?
+  priority    String @default("medium") // 'high' | 'medium' | 'low'
+  category    String?
+  order       Int    @default(0)
+  
+  // Relations
+  section   ChecklistSection @relation(fields: [sectionId], references: [id])
+  sectionId String
+  subTasks  ChecklistSubTask[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([originalId])
 }
 
 model ChecklistSubTask {
-  id                  String   @id @default(cuid())
-  originalId          String // e.g., 'onboarding-1-1'
-  text                String
-  completed           Boolean  @default(false)
+  id         String @id @default(cuid())
+  originalId String // e.g., 'onboarding-1-1' (matches localStorage IDs)
   
-  item                ChecklistItem @relation(fields: [checklistItemId], references: [id])
-  checklistItemId     String
+  // SubTask details
+  title       String
+  description String?
+  order       Int @default(0)
+  
+  // Relations
+  item           ChecklistItem @relation(fields: [checklistItemId], references: [id], onDelete: Cascade)
+  checklistItemId String
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([originalId])
 }
