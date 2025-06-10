@@ -178,6 +178,11 @@ export default function ClientManagement() {
     saveClients(updatedClients);
     
     // Also save to database via API
+    console.log('🔧 DEBUG: Save function called');
+    console.log('🔧 DEBUG: isAddingNew =', isAddingNew);
+    console.log('🔧 DEBUG: clientData.id =', clientData.id);
+    console.log('🔧 DEBUG: clientData =', clientData);
+    
     try {
       if (isAddingNew) {
         console.log('🔄 Creating new client in database:', clientData.name);
@@ -199,6 +204,7 @@ export default function ClientManagement() {
         }
       } else {
         console.log('🔄 Updating existing client in database:', clientData.name);
+        console.log('🔄 API URL will be:', `/api/clients/${clientData.id}`);
         
         const response = await fetch(`/api/clients/${clientData.id}`, {
           method: 'PUT',
@@ -208,7 +214,9 @@ export default function ClientManagement() {
           body: JSON.stringify(clientData),
         });
         
+        console.log('🔄 API response status:', response.status);
         const result = await response.json();
+        console.log('🔄 API response data:', result);
         
         if (result.success) {
           console.log('✅ Client updated in database successfully:', clientData.name);
