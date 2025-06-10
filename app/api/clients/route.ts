@@ -1,6 +1,16 @@
 import { NextResponse } from 'next/server';
 import { DatabaseService } from '../../../lib/db/database-service';
 
+export async function GET(request: Request) {
+  try {
+    const clients = await DatabaseService.getClients();
+    return NextResponse.json(clients);
+  } catch (error) {
+    console.error('Error fetching clients:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}
+
 export async function POST(request: Request) {
   try {
     console.log('🔄 API: Creating client...');

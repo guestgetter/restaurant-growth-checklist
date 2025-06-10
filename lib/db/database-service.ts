@@ -31,6 +31,17 @@ export class DatabaseService {
   // ===================
   
   /**
+   * Get all clients from the database ONLY.
+   */
+  static async getClients(userId?: string): Promise<DatabaseClient[]> {
+    const dbClients = await prisma.client.findMany({
+      where: userId ? { userId } : {},
+      orderBy: { createdAt: 'asc' }
+    });
+    return dbClients.map(this.mapDbClientToClient);
+  }
+
+  /**
    * Get all clients - reads from database with localStorage fallback
    */
   static async getAllClients(userId?: string): Promise<DatabaseClient[]> {

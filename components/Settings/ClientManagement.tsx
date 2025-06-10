@@ -83,18 +83,55 @@ export default function ClientManagement() {
   const [editingClient, setEditingClient] = useState<Partial<Client> | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
 
-  // Load clients from localStorage
+  // Load clients from localStorage and database
   useEffect(() => {
-    try {
-      // Initialize default client if none exists
-      const currentClient = initializeDefaultClient();
-      const allClients = getAllClients();
-      
-      setClients(allClients);
-      setCurrentClient(currentClient.id);
-    } catch (error) {
-      console.error('Error loading clients:', error);
-    }
+    const fetchAndSyncClients = async () => {
+      try {
+        console.log('🔄 Fetching clients from API...');
+        const response = await fetch('/api/clients');
+        if (!response.ok) {
+          throw new Error('Failed to fetch clients from database');
+        }
+        const dbClients = await response.json();
+        console.log(`✅ Fetched ${dbClients.length} clients from DB.`);
+
+        // Also get clients from localStorage
+        const localClients = getAllClients();
+        console.log(`✅ Found ${localClients.length} clients in localStorage.`);
+
+        // Merge DB and local clients, DB is source of truth
+        const clientMap = new Map<string, Client>();
+        localClients.forEach(c => clientMap.set(c.id, c));
+        dbClients.forEach((c: Client) => clientMap.set(c.id, c));
+        
+        const syncedClients = Array.from(clientMap.values());
+        console.log(`✅ Synced to ${syncedClients.length} total clients.`);
+
+        // Save synced list back to localStorage
+        localStorage.setItem('growth-os-clients', JSON.stringify(syncedClients));
+        setClients(syncedClients);
+
+        // Set current client
+        let currentClientId = localStorage.getItem('growth-os-current-client');
+        if (!currentClientId || !syncedClients.some(c => c.id === currentClientId)) {
+          currentClientId = syncedClients[0]?.id || null;
+          if (currentClientId) {
+            localStorage.setItem('growth-os-current-client', currentClientId);
+          }
+        }
+        setCurrentClient(currentClientId);
+
+      } catch (error) {
+        console.error('❌ Error loading and syncing clients:', error);
+        // Fallback to only localStorage if DB fails
+        const localClients = getAllClients();
+        setClients(localClients);
+        const currentClientId = localStorage.getItem('growth-os-current-client');
+        setCurrentClient(currentClientId);
+      }
+    };
+
+    fetchAndSyncClients();
   }, []);
 
   const saveClients = (updatedClients: Client[]) => {
