@@ -93,6 +93,7 @@ export function ClientProvider({ children }: ClientProviderProps) {
     try {
       // Convert UI Client to DatabaseClient format
       const dbClientData = {
+        id: client.id, // 🔧 FIX: Include the client ID
         name: client.name,
         type: 'quick-service' as const, // Use valid type from schema
         industry: client.industry,
