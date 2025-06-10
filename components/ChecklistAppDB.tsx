@@ -59,13 +59,15 @@ export default function ChecklistAppDB() {
       setChecklistItems(items);
       
       // Update completed sets from database
-      const completedIds: string[] = items.filter((item: any) => item.completed).map((item: any) => item.originalId);
-      const completedSubIds: string[] = items.flatMap((item: any) => 
-        item.subTasks.filter((sub: any) => sub.completed).map((sub: any) => sub.originalId)
+      const completed = new Set(items.filter((item: any) => item.completed).map((item: any) => item.originalId as string));
+      const completedSubs = new Set(
+        items.flatMap((item: any) => 
+          item.subTasks.filter((sub: any) => sub.completed).map((sub: any) => sub.originalId as string)
+        )
       );
       
-      setCompletedItems(new Set(completedIds));
-      setCompletedSubTasks(new Set(completedSubIds));
+      setCompletedItems(completed);
+      setCompletedSubTasks(completedSubs);
     } catch (err) {
       console.error('Error loading checklist:', err);
       setError('Failed to load checklist');
