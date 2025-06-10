@@ -86,10 +86,11 @@ export class DatabaseService {
   /**
    * Create a new client - dual write to database and localStorage
    */
-  static async createClient(clientData: Omit<DatabaseClient, 'id'>): Promise<DatabaseClient> {
+  static async createClient(clientData: DatabaseClient): Promise<DatabaseClient> {
     const client: DatabaseClient = {
-      id: this.generateId(),
       ...clientData,
+      // Use provided ID or generate new one if not provided
+      id: clientData.id || this.generateId(),
     };
 
     // Write to localStorage immediately (for reliability)
@@ -118,7 +119,6 @@ export class DatabaseService {
           averageOrderValue: client.averageOrderValue,
           branding: client.branding || {},
           contact: client.contact || {},
-          userId: client.userId,
         }
       });
       
@@ -174,6 +174,27 @@ export class DatabaseService {
     } catch (error) {
       console.error('Failed to update client in database:', error);
       return updatedClient; // Return localStorage version
+    }
+  }
+
+  /**
+   * Delete a client - dual delete from database and localStorage
+   */
+  static async deleteClient(clientId: string): Promise<void> {
+    // Remove from localStorage first
+    const localClients = this.getClientsFromLocalStorage();
+    const updatedClients = localClients.filter(c => c.id !== clientId);
+    this.saveAllClientsToLocalStorage(updatedClients);
+
+    // Try to delete from database
+    try {
+      await prisma.client.delete({
+        where: { id: clientId }
+      });
+      console.log('Client deleted from database:', clientId);
+    } catch (error) {
+      console.error('Failed to delete client from database:', error);
+      // localStorage deletion already completed
     }
   }
 

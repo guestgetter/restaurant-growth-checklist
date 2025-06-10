@@ -114,7 +114,7 @@ export default function ClientManagement() {
     setIsEditing(true);
   };
 
-  const handleSaveClient = () => {
+  const handleSaveClient = async () => {
     if (!editingClient || !editingClient.name) return;
 
     const clientData: Client = {
@@ -137,13 +137,48 @@ export default function ClientManagement() {
       updatedClients = clients.map(c => c.id === clientData.id ? clientData : c);
     }
 
+    // Save to localStorage first (existing functionality)
     saveClients(updatedClients);
+    
+    // Also save to database via API
+    try {
+      if (isAddingNew) {
+        console.log('🔄 Starting database save for:', clientData.name);
+        console.log('🔍 Making API call to /api/clients');
+        
+        const response = await fetch('/api/clients', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(clientData),
+        });
+        
+        console.log('🔍 API response status:', response.status);
+        const result = await response.json();
+        console.log('🔍 API response data:', result);
+        
+        if (result.success) {
+          console.log('✅ Client saved to database successfully:', clientData.name);
+        } else {
+          throw new Error(result.error || 'API call failed');
+        }
+      }
+    } catch (error) {
+      console.error('❌ Database save failed - Full error details:');
+      console.error('❌ Error message:', (error as any)?.message);
+      console.error('❌ Error code:', (error as any)?.code);
+      console.error('❌ Error stack:', (error as any)?.stack);
+      console.error('❌ Full error object:', error);
+      // Continue with localStorage-only operation
+    }
+    
     setIsEditing(false);
     setEditingClient(null);
     setIsAddingNew(false);
   };
 
-  const handleDeleteClient = (clientId: string) => {
+  const handleDeleteClient = async (clientId: string) => {
     if (clients.length <= 1) {
       alert('Cannot delete the last client. Add another client first.');
       return;
@@ -157,6 +192,23 @@ export default function ClientManagement() {
         const newCurrentClient = updatedClients[0]?.id;
         setCurrentClient(newCurrentClient);
         localStorage.setItem('growth-os-current-client', newCurrentClient);
+      }
+      
+      // Also delete from database via API
+      try {
+        console.log('🔄 Deleting client from database:', clientId);
+        const response = await fetch(`/api/clients/${clientId}`, {
+          method: 'DELETE',
+        });
+        
+        if (response.ok) {
+          console.log('✅ Client deleted from database:', clientId);
+        } else {
+          throw new Error('Delete API call failed');
+        }
+      } catch (error) {
+        console.error('❌ Failed to delete client from database:', error);
+        // Continue with localStorage-only operation
       }
     }
   };

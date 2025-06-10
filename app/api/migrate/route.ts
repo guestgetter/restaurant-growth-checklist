@@ -134,21 +134,23 @@ export async function GET() {
     const clientCount = await prisma.client.count();
     const progressCount = await prisma.clientProgress.count();
     
+    await prisma.$disconnect();
+    
     return NextResponse.json({
       success: true,
       connected: true,
+      message: 'Database connection successful',
       stats: {
         clients: clientCount,
         progressRecords: progressCount
       }
     });
   } catch (error) {
+    await prisma.$disconnect();
     return NextResponse.json({
       success: false,
       connected: false,
       error: error instanceof Error ? error.message : 'Database connection failed'
     }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
 } 

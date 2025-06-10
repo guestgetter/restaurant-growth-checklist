@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Client } from '../components/Settings/ClientManagement';
+import { DatabaseService } from './db/database-service';
 
 interface ClientContextType {
   currentClient: Client | null;
@@ -83,13 +84,45 @@ export function ClientProvider({ children }: ClientProviderProps) {
     }
   };
 
-  const addClient = (client: Client) => {
+  const addClient = async (client: Client) => {
     const updatedClients = [...allClients, client];
     setAllClients(updatedClients);
     localStorage.setItem('growth-os-clients', JSON.stringify(updatedClients));
+    
+    // Also save to database
+    try {
+      // Convert UI Client to DatabaseClient format
+      const dbClientData = {
+        name: client.name,
+        type: 'quick-service' as const, // Use valid type from schema
+        industry: client.industry,
+        logo: client.logo,
+        location: { city: '', state: '', country: 'US' },
+        accountManager: '',
+        fulfillmentManager: '',
+        onboardingDate: new Date().toISOString(),
+        currentPhase: 'onboarding' as const,
+        googleAdsCustomerId: client.googleAdsCustomerId,
+        metaAdsAccountId: client.metaAdsAccountId,
+        dreamCaseStudyGoal: '',
+        targetAudience: '',
+        topCompetitors: [],
+        monthlyRevenue: 0,
+        averageOrderValue: 0,
+        branding: client.branding,
+        contact: client.contact,
+        userId: 'default-user',
+      };
+      
+      await DatabaseService.createClient(dbClientData);
+      console.log('✅ Client saved to database:', client.name);
+    } catch (error) {
+      console.error('❌ Failed to save client to database:', error);
+      // Continue with localStorage-only operation for now
+    }
   };
 
-  const updateClient = (updatedClient: Client) => {
+  const updateClient = async (updatedClient: Client) => {
     const updatedClients = allClients.map(c => 
       c.id === updatedClient.id ? updatedClient : c
     );
@@ -100,9 +133,30 @@ export function ClientProvider({ children }: ClientProviderProps) {
     if (currentClient?.id === updatedClient.id) {
       setCurrentClientState(updatedClient);
     }
+    
+    // Also update in database
+    try {
+      // Convert UI Client to DatabaseClient format for updates
+      const dbUpdateData = {
+        name: updatedClient.name,
+        industry: updatedClient.industry,
+        logo: updatedClient.logo,
+        branding: updatedClient.branding,
+        contact: updatedClient.contact,
+        googleAdsCustomerId: updatedClient.googleAdsCustomerId,
+        metaAdsAccountId: updatedClient.metaAdsAccountId,
+        // Don't include createdAt in updates
+      };
+      
+      await DatabaseService.updateClient(updatedClient.id, dbUpdateData);
+      console.log('✅ Client updated in database:', updatedClient.name);
+    } catch (error) {
+      console.error('❌ Failed to update client in database:', error);
+      // Continue with localStorage-only operation for now
+    }
   };
 
-  const deleteClient = (clientId: string) => {
+  const deleteClient = async (clientId: string) => {
     if (allClients.length <= 1) {
       throw new Error('Cannot delete the last client');
     }
@@ -116,6 +170,15 @@ export function ClientProvider({ children }: ClientProviderProps) {
       const newCurrentClient = updatedClients[0];
       setCurrentClientState(newCurrentClient);
       localStorage.setItem('growth-os-current-client', newCurrentClient.id);
+    }
+    
+    // Also delete from database
+    try {
+      await DatabaseService.deleteClient(clientId);
+      console.log('✅ Client deleted from database:', clientId);
+    } catch (error) {
+      console.error('❌ Failed to delete client from database:', error);
+      // Continue with localStorage-only operation for now
     }
   };
 

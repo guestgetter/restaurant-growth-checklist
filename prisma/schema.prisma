@@ -34,7 +34,7 @@ model User {
 
 // Enhanced Client model - handles all localStorage client data
 model Client {
-  id   String @id @default(cuid())
+  id   String @id
   name String
   
   // Restaurant details
