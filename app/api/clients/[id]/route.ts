@@ -25,10 +25,10 @@ export async function PUT(
     console.log('🔄 API: Updating client:', params.id);
     const updateData = await request.json();
     console.log('🔍 API: Update data received:', JSON.stringify(updateData, null, 2));
-    console.log('🔍 API: About to call DatabaseService.updateClient');
+    console.log('🔍 API: About to call DatabaseService.updateClientInDatabase');
     
-    const updatedClient = await DatabaseService.updateClient(params.id, updateData);
-    console.log('🔍 API: DatabaseService.updateClient completed');
+    const updatedClient = await DatabaseService.updateClientInDatabase(params.id, updateData);
+    console.log('🔍 API: DatabaseService.updateClientInDatabase completed');
     
     if (!updatedClient) {
       console.log('❌ API: updatedClient is null/undefined');

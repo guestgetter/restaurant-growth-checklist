@@ -142,7 +142,41 @@ export class DatabaseService {
   }
 
   /**
-   * Update an existing client - dual write
+   * Update client in database only (for API use)
+   */
+  static async updateClientInDatabase(clientId: string, updates: Partial<DatabaseClient>): Promise<DatabaseClient | null> {
+    try {
+      const dbClient = await prisma.client.update({
+        where: { id: clientId },
+        data: {
+          ...(updates.name !== undefined && { name: updates.name }),
+          ...(updates.type !== undefined && { type: updates.type }),
+          ...(updates.logo !== undefined && { logo: updates.logo }),
+          ...(updates.location !== undefined && { location: updates.location }),
+          ...(updates.accountManager !== undefined && { accountManager: updates.accountManager }),
+          ...(updates.fulfillmentManager !== undefined && { fulfillmentManager: updates.fulfillmentManager }),
+          ...(updates.currentPhase !== undefined && { currentPhase: updates.currentPhase }),
+          ...(updates.googleAdsCustomerId !== undefined && { googleAdsCustomerId: updates.googleAdsCustomerId }),
+          ...(updates.metaAdsAccountId !== undefined && { metaAdsAccountId: updates.metaAdsAccountId }),
+          ...(updates.dreamCaseStudyGoal !== undefined && { dreamCaseStudyGoal: updates.dreamCaseStudyGoal }),
+          ...(updates.targetAudience !== undefined && { targetAudience: updates.targetAudience }),
+          ...(updates.topCompetitors !== undefined && { topCompetitors: updates.topCompetitors }),
+          ...(updates.monthlyRevenue !== undefined && { monthlyRevenue: updates.monthlyRevenue }),
+          ...(updates.averageOrderValue !== undefined && { averageOrderValue: updates.averageOrderValue }),
+          ...(updates.branding !== undefined && { branding: updates.branding }),
+          ...(updates.contact !== undefined && { contact: updates.contact }),
+        }
+      });
+
+      return this.mapDbClientToClient(dbClient);
+    } catch (error) {
+      console.error('Failed to update client in database:', error);
+      throw error; // Re-throw for API error handling
+    }
+  }
+
+  /**
+   * Update client - dual update (localStorage + database) for frontend use
    */
   static async updateClient(clientId: string, updates: Partial<DatabaseClient>): Promise<DatabaseClient | null> {
     // Update localStorage first
