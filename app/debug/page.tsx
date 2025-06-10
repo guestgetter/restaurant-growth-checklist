@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { fixAllClientDataFormats, checkClientDataFormats, getAllClients } from '../../lib/clientDataFixer';
 import ErrorBoundaryTest from '../../components/ErrorBoundaryTest';
+import SeedButton from './seed-button';
 import DataErrorBoundary from '../../components/DataErrorBoundary';
 
 export default function DebugPage() {
@@ -75,6 +76,9 @@ export default function DebugPage() {
 
       {/* Error Boundary Testing */}
       <ErrorBoundaryTest />
+
+      {/* Database Management */}
+      <SeedButton />
 
       {/* Environment Status */}
       <div className="bg-white rounded-lg shadow p-6">
