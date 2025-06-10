@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
             where: { id: client.id },
             update: {
               name: client.name,
-              type: client.type || 'quick-service',
+              // type: removed from update as it may not be updatable
               industry: client.industry,
               logo: client.logo,
               location: client.location || { city: '', state: '', country: '' },
