@@ -824,4 +824,4 @@ export default function ChecklistApp() {
       </div>
     </div>
   );
-} 
+}
