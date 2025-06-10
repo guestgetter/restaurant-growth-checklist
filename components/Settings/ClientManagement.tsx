@@ -180,8 +180,7 @@ export default function ClientManagement() {
     // Also save to database via API
     try {
       if (isAddingNew) {
-        console.log('🔄 Starting database save for:', clientData.name);
-        console.log('🔍 Making API call to /api/clients');
+        console.log('🔄 Creating new client in database:', clientData.name);
         
         const response = await fetch('/api/clients', {
           method: 'POST',
@@ -191,22 +190,34 @@ export default function ClientManagement() {
           body: JSON.stringify(clientData),
         });
         
-        console.log('🔍 API response status:', response.status);
         const result = await response.json();
-        console.log('🔍 API response data:', result);
         
         if (result.success) {
-          console.log('✅ Client saved to database successfully:', clientData.name);
+          console.log('✅ Client created in database successfully:', clientData.name);
         } else {
-          throw new Error(result.error || 'API call failed');
+          throw new Error(result.error || 'Failed to create client');
+        }
+      } else {
+        console.log('🔄 Updating existing client in database:', clientData.name);
+        
+        const response = await fetch(`/api/clients/${clientData.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(clientData),
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          console.log('✅ Client updated in database successfully:', clientData.name);
+        } else {
+          throw new Error(result.error || 'Failed to update client');
         }
       }
     } catch (error) {
-      console.error('❌ Database save failed - Full error details:');
-      console.error('❌ Error message:', (error as any)?.message);
-      console.error('❌ Error code:', (error as any)?.code);
-      console.error('❌ Error stack:', (error as any)?.stack);
-      console.error('❌ Full error object:', error);
+      console.error('❌ Database operation failed:', error);
       // Continue with localStorage-only operation
     }
     
