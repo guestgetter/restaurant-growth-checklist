@@ -1,9 +1,9 @@
-import ChecklistAppDB from '../../components/ChecklistAppDB';
+import ChecklistApp from '../../components/ChecklistApp';
 
 export default function ChecklistPage() {
   return (
     <div className="h-full">
-      <ChecklistAppDB />
+      <ChecklistApp />
     </div>
   );
 } 
