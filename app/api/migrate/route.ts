@@ -27,14 +27,8 @@ export async function POST(request: NextRequest) {
           await prisma.client.upsert({
             where: { id: client.id },
             update: {
+              // Only include core updatable fields for existing clients
               name: client.name,
-              // type: removed from update as it may not be updatable
-              industry: client.industry,
-              logo: client.logo,
-              location: client.location || { city: '', state: '', country: '' },
-              accountManager: client.accountManager || '',
-              fulfillmentManager: client.fulfillmentManager || '',
-              onboardingDate: client.onboardingDate || new Date().toISOString(),
               currentPhase: client.currentPhase || 'onboarding',
               googleAdsCustomerId: client.googleAdsCustomerId,
               metaAdsAccountId: client.metaAdsAccountId,
