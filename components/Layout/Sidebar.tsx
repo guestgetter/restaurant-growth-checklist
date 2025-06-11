@@ -165,8 +165,44 @@ export default function Sidebar() {
     try {
       setIsLoadingClients(true);
       
-      // Get all clients from storage
-      const allStoredClients = getAllClients();
+      // First try to fetch clients from database and sync with localStorage
+      let allStoredClients: Client[] = [];
+      try {
+        console.log('🔄 Fetching clients from API for sidebar...');
+        const response = await fetch('/api/clients');
+        if (response.ok) {
+          const dbClients = await response.json();
+          console.log(`✅ Fetched ${dbClients.length} clients from DB for sidebar.`);
+
+          // Also get clients from localStorage
+          const localClients = getAllClients();
+          console.log(`✅ Found ${localClients.length} clients in localStorage.`);
+
+          // Merge DB and local clients, DB is source of truth
+          const clientMap = new Map<string, Client>();
+          localClients.forEach(c => clientMap.set(c.id, c));
+          dbClients.forEach((c: Client) => clientMap.set(c.id, c));
+          
+          allStoredClients = Array.from(clientMap.values());
+          console.log(`✅ Synced to ${allStoredClients.length} total clients for sidebar.`);
+
+          // Save synced list back to localStorage
+          localStorage.setItem('growth-os-clients', JSON.stringify(allStoredClients));
+        } else {
+          throw new Error('Database fetch failed');
+        }
+      } catch (dbError) {
+        console.warn('Failed to fetch from database, using localStorage only:', dbError);
+        // Fallback to localStorage only
+        allStoredClients = getAllClients();
+      }
+      
+      // If still no clients, initialize defaults
+      if (allStoredClients.length === 0) {
+        console.log('No clients found, initializing defaults...');
+        const defaultClient = initializeDefaultClient();
+        allStoredClients = getAllClients(); // This should now have the 3 default clients
+      }
       
       // Filter clients based on user permissions
       const allowedClients = filterClientsForUser(allStoredClients, session);
