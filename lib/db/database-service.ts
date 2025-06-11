@@ -323,6 +323,69 @@ export class DatabaseService {
   }
 
   // ===================
+  // CLIENT PROFILE METHODS
+  // ===================
+
+  /**
+   * Get client profile - database with localStorage fallback
+   */
+  static async getClientProfile(clientId: string): Promise<any> {
+    try {
+      const dbProfile = await prisma.clientProfile.findUnique({
+        where: { clientId }
+      });
+
+      if (dbProfile) {
+        return {
+          id: dbProfile.clientId,
+          conversations: dbProfile.conversations,
+          baseline: dbProfile.baseline,
+          dreamCaseStudy: dbProfile.dreamCaseStudy,
+          lastUpdated: dbProfile.lastUpdated.toISOString(),
+        };
+      }
+    } catch (error) {
+      console.error('Database read error, falling back to localStorage:', error);
+    }
+
+    // Fallback to localStorage
+    return this.getProfileFromLocalStorage(clientId);
+  }
+
+  /**
+   * Save client profile - dual write to database and localStorage
+   */
+  static async saveClientProfile(clientId: string, profileData: any): Promise<void> {
+    // Save to localStorage immediately
+    this.saveProfileToLocalStorage(clientId, profileData);
+
+    // Try to save to database
+    try {
+      await prisma.clientProfile.upsert({
+        where: { clientId },
+        update: {
+          conversations: profileData.conversations || [],
+          baseline: profileData.baseline || {},
+          dreamCaseStudy: profileData.dreamCaseStudy || {},
+          lastUpdated: new Date(),
+        },
+        create: {
+          clientId,
+          conversations: profileData.conversations || [],
+          baseline: profileData.baseline || {},
+          dreamCaseStudy: profileData.dreamCaseStudy || {},
+          lastUpdated: new Date(),
+        }
+      });
+
+      console.log('Profile saved to database for client:', clientId);
+    } catch (error) {
+      console.error('Failed to save profile to database:', error);
+      // localStorage save already completed
+    }
+  }
+
+  // ===================
   // MIGRATION UTILITIES
   // ===================
 
@@ -495,6 +558,57 @@ export class DatabaseService {
     
     safeLocalStorage.setItem(progressKey, JSON.stringify(completedItems));
     safeLocalStorage.setItem(subtasksKey, JSON.stringify(completedSubtasks));
+  }
+
+  private static getProfileFromLocalStorage(clientId: string): any {
+    const profileKey = `client-profile-${clientId}`;
+    const localProfile = safeLocalStorage.getItem(profileKey);
+
+    if (localProfile) {
+      try {
+        return JSON.parse(localProfile);
+      } catch (error) {
+        console.error('Error parsing profile from localStorage:', error);
+      }
+    }
+
+    // Return empty profile structure if nothing exists
+    return {
+      id: clientId,
+      conversations: [],
+      baseline: {
+        monthlyRevenue: '',
+        averageOrderValue: '',
+        customerCount: '',
+        onlinePresence: {
+          googleReviews: '',
+          websiteTraffic: '',
+          socialFollowing: ''
+        },
+        marketingChannels: [],
+        mainChallenges: [],
+        currentTools: []
+      },
+      dreamCaseStudy: {
+        timeframe: '',
+        revenueGoal: '',
+        customerGrowthGoal: '',
+        marketExpansion: '',
+        brandVision: '',
+        successMetrics: [],
+        milestones: []
+      },
+      lastUpdated: new Date().toISOString()
+    };
+  }
+
+  private static saveProfileToLocalStorage(clientId: string, profileData: any): void {
+    const profileKey = `client-profile-${clientId}`;
+    const profileWithTimestamp = {
+      ...profileData,
+      lastUpdated: new Date().toISOString()
+    };
+    safeLocalStorage.setItem(profileKey, JSON.stringify(profileWithTimestamp));
   }
 
   private static calculateProgressPercentage(completedItems: string[]): number {

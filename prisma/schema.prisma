@@ -82,6 +82,7 @@ model Client {
   user              User?   @relation(fields: [userId], references: [id])
   userId            String?
   checklistProgress ClientProgress[]
+  profile           ClientProfile?
   growthMetrics     GrowthMetric[]
   engagementEvents  EngagementEvent[]
   actionItems       ActionItem[]
@@ -109,6 +110,22 @@ model ClientProgress {
   updatedAt DateTime @updatedAt
   
   @@unique([clientId])
+}
+
+// Client profile data - stores conversations, baseline metrics, and dream case study
+model ClientProfile {
+  id       String @id @default(cuid())
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId String @unique
+  
+  // Profile data as JSON (matches localStorage format)
+  conversations    Json @default("[]")     // ConversationNote[]
+  baseline         Json @default("{}")     // BaselineMetrics
+  dreamCaseStudy   Json @default("{}")     // DreamCaseStudy
+  
+  lastUpdated DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 // Growth metrics storage

@@ -77,51 +77,96 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
   const [showAddConversation, setShowAddConversation] = useState(false);
 
   useEffect(() => {
-    loadClientProfile();
+    loadClientProfile().catch(console.error);
   }, [clientId]);
 
-  const loadClientProfile = () => {
+  const loadClientProfile = async () => {
+    try {
+      // Try to load from database first
+      const response = await fetch(`/api/clients/${clientId}/profile`);
+      if (response.ok) {
+        const profileData = await response.json();
+        if (profileData && (profileData.conversations?.length > 0 || profileData.baseline?.monthlyRevenue || profileData.dreamCaseStudy?.revenueGoal)) {
+          console.log('Loaded profile from database:', profileData);
+          setProfile(profileData);
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load profile from database:', error);
+    }
+
+    // Fallback to localStorage
     const saved = localStorage.getItem(`client-profile-${clientId}`);
     if (saved) {
-      setProfile(JSON.parse(saved));
-    } else {
-      // Initialize empty profile
-      const newProfile: ClientProfileData = {
-        id: clientId,
-        conversations: [],
-        baseline: {
-          monthlyRevenue: '',
-          averageOrderValue: '',
-          customerCount: '',
-          onlinePresence: {
-            googleReviews: '',
-            websiteTraffic: '',
-            socialFollowing: ''
-          },
-          marketingChannels: [],
-          mainChallenges: [],
-          currentTools: []
-        },
-        dreamCaseStudy: {
-          timeframe: '',
-          revenueGoal: '',
-          customerGrowthGoal: '',
-          marketExpansion: '',
-          brandVision: '',
-          successMetrics: [],
-          milestones: []
-        },
-        lastUpdated: new Date().toISOString()
-      };
-      setProfile(newProfile);
-      saveProfile(newProfile);
+      try {
+        const localProfile = JSON.parse(saved);
+        console.log('Loaded profile from localStorage:', localProfile);
+        setProfile(localProfile);
+        return;
+      } catch (error) {
+        console.error('Error parsing profile from localStorage:', error);
+      }
     }
+
+    // Initialize empty profile if nothing exists
+    const newProfile: ClientProfileData = {
+      id: clientId,
+      conversations: [],
+      baseline: {
+        monthlyRevenue: '',
+        averageOrderValue: '',
+        customerCount: '',
+        onlinePresence: {
+          googleReviews: '',
+          websiteTraffic: '',
+          socialFollowing: ''
+        },
+        marketingChannels: [],
+        mainChallenges: [],
+        currentTools: []
+      },
+      dreamCaseStudy: {
+        timeframe: '',
+        revenueGoal: '',
+        customerGrowthGoal: '',
+        marketExpansion: '',
+        brandVision: '',
+        successMetrics: [],
+        milestones: []
+      },
+      lastUpdated: new Date().toISOString()
+    };
+    setProfile(newProfile);
+    saveProfile(newProfile);
   };
 
-  const saveProfile = (updatedProfile: ClientProfileData) => {
+  const saveProfile = async (updatedProfile: ClientProfileData) => {
     updatedProfile.lastUpdated = new Date().toISOString();
+    
+    // Save to localStorage immediately for instant UI feedback
     localStorage.setItem(`client-profile-${clientId}`, JSON.stringify(updatedProfile));
     setProfile(updatedProfile);
+    
+    // Save to database
+    try {
+      const response = await fetch(`/api/clients/${clientId}/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedProfile),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to save profile: ${response.status}`);
+      }
+
+      console.log('Profile saved to database successfully');
+    } catch (error) {
+      console.error('Failed to save profile to database:', error);
+      // localStorage save already completed, so UI won't be affected
+    }
   };
 
   const addConversation = (conversation: Omit<ConversationNote, 'id'>) => {
