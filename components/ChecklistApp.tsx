@@ -50,8 +50,70 @@ export default function ChecklistApp() {
   const [currentClient, setCurrentClient] = useState<Client | null>(null);
 
   // Load current client and client-specific progress
+  // Load progress from database with localStorage fallback
+  const loadProgressFromDatabase = async (clientId: string) => {
+    try {
+      const response = await fetch(`/api/clients/${clientId}/progress`);
+      if (response.ok) {
+        const progress = await response.json();
+        if (progress.completedItems && progress.completedItems.length > 0) {
+          console.log('Loaded progress from database:', progress);
+          setCompletedItems(new Set(progress.completedItems));
+          setCompletedSubTasks(new Set(progress.completedSubtasks || []));
+          
+          // Update sections with completed status
+          setSections(prevSections => 
+            prevSections.map(section => ({
+              ...section,
+              items: section.items.map(item => ({
+                ...item,
+                completed: progress.completedItems.includes(item.id)
+              }))
+            }))
+          );
+          return; // Successfully loaded from database
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load progress from database:', error);
+    }
+
+    // Fallback to localStorage
+    const clientProgressKey = `restaurant-checklist-progress-${clientId}`;
+    const clientSubTasksKey = `restaurant-checklist-subtasks-${clientId}`;
+    
+    const saved = safeLocalStorage.getItem(clientProgressKey);
+    const savedSubTasks = safeLocalStorage.getItem(clientSubTasksKey);
+    
+    // Safe parsing of completed IDs
+    const completedIds = safeJsonParse<string[]>(saved, []);
+    if (safeArray(completedIds).length > 0) {
+      console.log('Loaded progress from localStorage:', completedIds);
+      setCompletedItems(new Set(completedIds));
+      
+      // Update sections with completed status for this client
+      setSections(prevSections => 
+        prevSections.map(section => ({
+          ...section,
+          items: section.items.map(item => ({
+            ...item,
+            completed: completedIds.includes(item.id)
+          }))
+        }))
+      );
+    } else {
+      // No progress for this client yet - reset to empty
+      setCompletedItems(new Set());
+      setSections(checklistData); // Reset to default state
+    }
+
+    // Safe parsing of completed subtasks
+    const completedSubTaskIds = safeJsonParse<string[]>(savedSubTasks, []);
+    setCompletedSubTasks(new Set(safeArray(completedSubTaskIds)));
+  };
+
   useEffect(() => {
-    const loadClientAndProgress = () => {
+    const loadClientAndProgress = async () => {
       // First, migrate any existing global progress
       migrateGlobalProgressToClient();
       
@@ -115,37 +177,8 @@ export default function ChecklistApp() {
           safeLocalStorage.setItem('growth-os-current-client', client.id);
         }
         
-        // Load progress specific to this client
-        const clientProgressKey = `restaurant-checklist-progress-${client.id}`;
-        const clientSubTasksKey = `restaurant-checklist-subtasks-${client.id}`;
-        
-        const saved = safeLocalStorage.getItem(clientProgressKey);
-        const savedSubTasks = safeLocalStorage.getItem(clientSubTasksKey);
-        
-        // Safe parsing of completed IDs
-        const completedIds = safeJsonParse<string[]>(saved, []);
-        if (safeArray(completedIds).length > 0) {
-          setCompletedItems(new Set(completedIds));
-          
-          // Update sections with completed status for this client
-          setSections(prevSections => 
-            prevSections.map(section => ({
-              ...section,
-              items: section.items.map(item => ({
-                ...item,
-                completed: completedIds.includes(item.id)
-              }))
-            }))
-          );
-        } else {
-          // No progress for this client yet - reset to empty
-          setCompletedItems(new Set());
-          setSections(checklistData); // Reset to default state
-        }
-
-        // Safe parsing of completed subtasks
-        const completedSubTaskIds = safeJsonParse<string[]>(savedSubTasks, []);
-        setCompletedSubTasks(new Set(safeArray(completedSubTaskIds)));
+        // Load progress from database first, fallback to localStorage
+        await loadProgressFromDatabase(client.id);
       } else {
         // Fallback: create and set a default client immediately
         const fallbackClient: Client = {
@@ -178,7 +211,7 @@ export default function ChecklistApp() {
       }
     };
 
-    loadClientAndProgress();
+    loadClientAndProgress().catch(console.error);
 
     // Load theme with safe localStorage
     const savedTheme = safeLocalStorage.getItem('restaurant-checklist-theme');
@@ -190,7 +223,7 @@ export default function ChecklistApp() {
     // Listen for client changes
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'growth-os-current-client') {
-        loadClientAndProgress();
+        loadClientAndProgress().catch(console.error);
       }
     };
 
@@ -200,7 +233,7 @@ export default function ChecklistApp() {
         setCurrentClient(e.detail.client);
         // Reload progress for the new client
         setTimeout(() => {
-          loadClientAndProgress();
+          loadClientAndProgress().catch(console.error);
         }, 0);
       }
     };
@@ -214,21 +247,73 @@ export default function ChecklistApp() {
     };
   }, []);
 
-  // Save progress to localStorage for current client with defensive programming
-  const saveProgress = (newCompletedItems: Set<string>) => {
-    if (currentClient?.id) {
-      const clientProgressKey = `restaurant-checklist-progress-${currentClient.id}`;
-      const progressArray = Array.from(newCompletedItems);
-      safeLocalStorage.setItem(clientProgressKey, safeJsonStringify(progressArray));
+  // Save progress to database with localStorage fallback
+  const saveProgress = async (newCompletedItems: Set<string>) => {
+    if (!currentClient?.id) return;
+    
+    const progressArray = Array.from(newCompletedItems);
+    const subtasksArray = Array.from(completedSubTasks);
+    
+    // Save to localStorage immediately for instant UI feedback
+    const clientProgressKey = `restaurant-checklist-progress-${currentClient.id}`;
+    safeLocalStorage.setItem(clientProgressKey, safeJsonStringify(progressArray));
+    
+    // Save to database
+    try {
+      const response = await fetch(`/api/clients/${currentClient.id}/progress`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          completedItems: progressArray,
+          completedSubtasks: subtasksArray,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to save progress: ${response.status}`);
+      }
+
+      console.log('Progress saved to database successfully');
+    } catch (error) {
+      console.error('Failed to save progress to database:', error);
+      // localStorage save already completed, so UI won't be affected
     }
   };
 
-  // Save sub-task progress to localStorage for current client with defensive programming
-  const saveSubTaskProgress = (newCompletedSubTasks: Set<string>) => {
-    if (currentClient?.id) {
-      const clientSubTasksKey = `restaurant-checklist-subtasks-${currentClient.id}`;
-      const subTasksArray = Array.from(newCompletedSubTasks);
-      safeLocalStorage.setItem(clientSubTasksKey, safeJsonStringify(subTasksArray));
+  // Save sub-task progress to database with localStorage fallback
+  const saveSubTaskProgress = async (newCompletedSubTasks: Set<string>) => {
+    if (!currentClient?.id) return;
+    
+    const subtasksArray = Array.from(newCompletedSubTasks);
+    const progressArray = Array.from(completedItems);
+    
+    // Save to localStorage immediately for instant UI feedback
+    const clientSubTasksKey = `restaurant-checklist-subtasks-${currentClient.id}`;
+    safeLocalStorage.setItem(clientSubTasksKey, safeJsonStringify(subtasksArray));
+    
+    // Save to database
+    try {
+      const response = await fetch(`/api/clients/${currentClient.id}/progress`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          completedItems: progressArray,
+          completedSubtasks: subtasksArray,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to save subtasks progress: ${response.status}`);
+      }
+
+      console.log('Subtasks progress saved to database successfully');
+    } catch (error) {
+      console.error('Failed to save subtasks progress to database:', error);
+      // localStorage save already completed, so UI won't be affected
     }
   };
 
