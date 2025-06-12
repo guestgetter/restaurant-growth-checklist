@@ -609,9 +609,16 @@ export class GoogleAdsService {
         dayGroups[dayOfWeek].spend += data.cost / 1000000; // Convert from micros
       });
       
-      const peakDays = Object.entries(dayGroups)
+      let peakDays = Object.entries(dayGroups)
         .map(([day, data]) => ({ day, ...data }))
         .sort((a, b) => b.conversions - a.conversions);
+
+      // Ensure we always have at least default days if no data exists
+      if (peakDays.length === 0) {
+        peakDays = [
+          'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+        ].map(day => ({ day, conversions: 0, spend: 0 }));
+      }
 
       // Calculate customer acquisition trend (simplified)
       const recentData = timeSeries.slice(-14); // Last 14 days

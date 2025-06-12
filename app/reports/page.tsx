@@ -705,9 +705,9 @@ function OverviewTab({ campaigns, keywords, insights, demo }: { campaigns: Campa
           
           {/* Improved Visual Display */}
           <div className="grid grid-cols-7 gap-3 mb-6">
-            {insights.peakDays.map((day, index) => {
-              const maxConversions = Math.max(...insights.peakDays.map(d => d.conversions));
-              const heightPercentage = (day.conversions / maxConversions) * 100;
+            {(insights.peakDays || []).map((day, index) => {
+              const maxConversions = Math.max(...(insights.peakDays || []).map(d => d.conversions));
+              const heightPercentage = maxConversions > 0 ? (day.conversions / maxConversions) * 100 : 0;
               const isWeekend = day.day === 'Saturday' || day.day === 'Sunday';
               
               return (
@@ -737,12 +737,14 @@ function OverviewTab({ campaigns, keywords, insights, demo }: { campaigns: Campa
           <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
               {(() => {
-                const weekendDays = insights.peakDays.filter(d => d.day === 'Saturday' || d.day === 'Sunday');
-                const weekdayDays = insights.peakDays.filter(d => d.day !== 'Saturday' && d.day !== 'Sunday');
+                const weekendDays = insights.peakDays?.filter(d => d.day === 'Saturday' || d.day === 'Sunday') || [];
+                const weekdayDays = insights.peakDays?.filter(d => d.day !== 'Saturday' && d.day !== 'Sunday') || [];
                 const weekendConversions = weekendDays.reduce((sum, d) => sum + d.conversions, 0);
                 const weekdayConversions = weekdayDays.reduce((sum, d) => sum + d.conversions, 0);
-                const bestDay = insights.peakDays.reduce((prev, curr) => prev.conversions > curr.conversions ? prev : curr);
-                const totalConversions = insights.peakDays.reduce((sum, d) => sum + d.conversions, 0);
+                const bestDay = insights.peakDays && insights.peakDays.length > 0 
+                  ? insights.peakDays.reduce((prev, curr) => prev.conversions > curr.conversions ? prev : curr)
+                  : { day: 'N/A', conversions: 0, spend: 0 };
+                const totalConversions = insights.peakDays?.reduce((sum, d) => sum + d.conversions, 0) || 1;
                 
                 return (
                   <>
@@ -827,7 +829,9 @@ function OverviewTab({ campaigns, keywords, insights, demo }: { campaigns: Campa
             </h4>
             
             {(() => {
-              const bestDay = insights.peakDays?.reduce((prev, curr) => prev.conversions > curr.conversions ? prev : curr);
+              const bestDay = insights.peakDays && insights.peakDays.length > 0 
+                ? insights.peakDays.reduce((prev, curr) => prev.conversions > curr.conversions ? prev : curr)
+                : { day: 'N/A', conversions: 0, spend: 0 };
               const isWeekendBest = bestDay?.day === 'Saturday' || bestDay?.day === 'Sunday';
               
               return (
