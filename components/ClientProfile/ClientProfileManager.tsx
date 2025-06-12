@@ -80,6 +80,8 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
     loadClientProfile().catch(console.error);
   }, [clientId]);
 
+
+
   const loadClientProfile = async () => {
     try {
       // Try to load from database first

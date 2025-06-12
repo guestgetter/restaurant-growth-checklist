@@ -21,6 +21,7 @@ export default function ClientProfilePage() {
           const clients: Client[] = JSON.parse(savedClients);
           const client = clients.find(c => c.id === savedCurrentClientId);
           if (client) {
+            console.log('ClientProfile Page: Loading client:', client.name);
             setCurrentClient(client);
           }
         } catch (error) {
@@ -30,6 +31,32 @@ export default function ClientProfilePage() {
     };
 
     loadCurrentClient();
+
+    // Listen for client changes from sidebar dropdown
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'growth-os-current-client') {
+        console.log('ClientProfile Page: Client switched via storage event, reloading client');
+        loadCurrentClient();
+      }
+    };
+
+    const handleClientChange = (e: CustomEvent) => {
+      if (e.detail.client) {
+        console.log('ClientProfile Page: Client switched via custom event to:', e.detail.client.name);
+        setCurrentClient(e.detail.client);
+      } else if (e.detail.clientId) {
+        // Fallback: reload from localStorage if only clientId is provided
+        loadCurrentClient();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('clientChanged', handleClientChange as EventListener);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('clientChanged', handleClientChange as EventListener);
+    };
   }, [status]);
 
   if (status === 'loading') {
