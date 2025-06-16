@@ -62,25 +62,47 @@ interface DreamCaseStudy {
   }>;
 }
 
+interface ClientContext {
+  businessPriorities: string[];
+  currentChallenges: string[];
+  decisionMakers: Array<{
+    name: string;
+    role: string;
+    contact: string;
+    influence: 'high' | 'medium' | 'low';
+  }>;
+  importantDates: Array<{
+    date: string;
+    event: string;
+    type: 'renewal' | 'review' | 'launch' | 'seasonal' | 'other';
+  }>;
+  competitorInfo: string[];
+  specialNotes: string;
+  communicationPreferences: {
+    frequency: 'weekly' | 'biweekly' | 'monthly';
+    method: 'call' | 'email' | 'meeting' | 'text';
+    bestTimes: string;
+  };
+}
+
 interface ClientProfileData {
   id: string;
   conversations: ConversationNote[];
   baseline: BaselineMetrics;
   dreamCaseStudy: DreamCaseStudy;
+  clientContext: ClientContext;
   lastUpdated: string;
 }
 
 export default function ClientProfileManager({ clientId }: { clientId: string }) {
   const [profile, setProfile] = useState<ClientProfileData | null>(null);
-  const [activeTab, setActiveTab] = useState<'conversations' | 'baseline' | 'dream'>('conversations');
+  const [activeTab, setActiveTab] = useState<'conversations' | 'baseline' | 'dream' | 'context'>('conversations');
   const [isEditing, setIsEditing] = useState(false);
   const [showAddConversation, setShowAddConversation] = useState(false);
 
   useEffect(() => {
     loadClientProfile().catch(console.error);
   }, [clientId]);
-
-
 
   const loadClientProfile = async () => {
     try {
@@ -136,6 +158,19 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
         brandVision: '',
         successMetrics: [],
         milestones: []
+      },
+      clientContext: {
+        businessPriorities: [],
+        currentChallenges: [],
+        decisionMakers: [],
+        importantDates: [],
+        competitorInfo: [],
+        specialNotes: '',
+        communicationPreferences: {
+          frequency: 'weekly',
+          method: 'call',
+          bestTimes: ''
+        }
       },
       lastUpdated: new Date().toISOString()
     };
@@ -196,6 +231,11 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
   const updateDreamCaseStudy = (dreamCaseStudy: DreamCaseStudy) => {
     if (!profile) return;
     saveProfile({ ...profile, dreamCaseStudy });
+  };
+
+  const updateClientContext = (clientContext: ClientContext) => {
+    if (!profile) return;
+    saveProfile({ ...profile, clientContext });
   };
 
   if (!profile) return null;
@@ -266,6 +306,19 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
               Dream Case Study
             </div>
           </button>
+          <button
+            onClick={() => setActiveTab('context')}
+            className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'context'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <FileText size={16} />
+              Client Context
+            </div>
+          </button>
         </nav>
       </div>
 
@@ -296,6 +349,14 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
               setIsEditing={setIsEditing}
             />
           )}
+          {activeTab === 'context' && (
+            <ClientContextTab
+              clientContext={profile.clientContext}
+              onUpdate={updateClientContext}
+              isEditing={isEditing}
+              setIsEditing={setIsEditing}
+            />
+          )}
         </AnimatePresence>
       </div>
     </div>
@@ -322,7 +383,7 @@ function ConversationsTab({
     nextSteps: [''],
     participants: [''],
     sentiment: 'positive',
-    stage: 'prospect'
+    stage: 'active'
   });
 
   const getSentimentColor = (sentiment: string) => {
@@ -348,7 +409,14 @@ function ConversationsTab({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onAdd(newConversation);
+    // Filter out empty strings from arrays
+    const cleanedConversation = {
+      ...newConversation,
+      keyPoints: newConversation.keyPoints.filter(point => point.trim() !== ''),
+      nextSteps: newConversation.nextSteps.filter(step => step.trim() !== ''),
+      participants: newConversation.participants.filter(participant => participant.trim() !== '')
+    };
+    onAdd(cleanedConversation);
     setNewConversation({
       date: new Date().toISOString().split('T')[0],
       type: 'call',
@@ -357,8 +425,44 @@ function ConversationsTab({
       nextSteps: [''],
       participants: [''],
       sentiment: 'positive',
-      stage: 'prospect'
+      stage: 'active'
     });
+  };
+
+  const addKeyPoint = () => {
+    setNewConversation({
+      ...newConversation,
+      keyPoints: [...newConversation.keyPoints, '']
+    });
+  };
+
+  const updateKeyPoint = (index: number, value: string) => {
+    const updated = [...newConversation.keyPoints];
+    updated[index] = value;
+    setNewConversation({ ...newConversation, keyPoints: updated });
+  };
+
+  const removeKeyPoint = (index: number) => {
+    const updated = newConversation.keyPoints.filter((_, i) => i !== index);
+    setNewConversation({ ...newConversation, keyPoints: updated });
+  };
+
+  const addNextStep = () => {
+    setNewConversation({
+      ...newConversation,
+      nextSteps: [...newConversation.nextSteps, '']
+    });
+  };
+
+  const updateNextStep = (index: number, value: string) => {
+    const updated = [...newConversation.nextSteps];
+    updated[index] = value;
+    setNewConversation({ ...newConversation, nextSteps: updated });
+  };
+
+  const removeNextStep = (index: number) => {
+    const updated = newConversation.nextSteps.filter((_, i) => i !== index);
+    setNewConversation({ ...newConversation, nextSteps: updated });
   };
 
   return (
@@ -371,7 +475,7 @@ function ConversationsTab({
       {/* Add Conversation Button */}
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-          Conversation History
+          Client Interactions & Call Notes
         </h3>
         <button
           onClick={() => setShowAdd(!showAdd)}
@@ -389,7 +493,7 @@ function ConversationsTab({
           animate={{ opacity: 1, height: 'auto' }}
           exit={{ opacity: 0, height: 0 }}
           onSubmit={handleSubmit}
-          className="bg-slate-50 dark:bg-slate-700 p-4 rounded-lg space-y-4"
+          className="bg-slate-50 dark:bg-slate-700 p-6 rounded-lg space-y-6 border border-slate-200 dark:border-slate-600"
         >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -421,38 +525,113 @@ function ConversationsTab({
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                Stage
+                Client Sentiment
               </label>
               <select
-                value={newConversation.stage}
-                onChange={(e) => setNewConversation({ ...newConversation, stage: e.target.value as any })}
+                value={newConversation.sentiment}
+                onChange={(e) => setNewConversation({ ...newConversation, sentiment: e.target.value as any })}
                 className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
               >
-                <option value="prospect">Prospect</option>
-                <option value="proposal">Proposal</option>
-                <option value="negotiation">Negotiation</option>
-                <option value="closed">Closed</option>
-                <option value="onboarding">Onboarding</option>
-                <option value="active">Active Client</option>
+                <option value="positive">Positive</option>
+                <option value="neutral">Neutral</option>
+                <option value="concern">Concern/Issue</option>
               </select>
             </div>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Summary
+              Call Summary
             </label>
             <textarea
               value={newConversation.summary}
               onChange={(e) => setNewConversation({ ...newConversation, summary: e.target.value })}
               rows={3}
               className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
-              placeholder="Brief summary of the conversation..."
+              placeholder="Brief overview of the conversation, main topics discussed, client mood..."
               required
             />
           </div>
 
-          <div className="flex gap-4 justify-end">
+          {/* Key Takeaways */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Key Takeaways & Important Points
+              </label>
+              <button
+                type="button"
+                onClick={addKeyPoint}
+                className="text-blue-600 hover:text-blue-700 text-sm flex items-center gap-1"
+              >
+                <Plus size={14} />
+                Add Point
+              </button>
+            </div>
+            <div className="space-y-2">
+              {newConversation.keyPoints.map((point, index) => (
+                <div key={index} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={point}
+                    onChange={(e) => updateKeyPoint(index, e.target.value)}
+                    className="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
+                    placeholder="Key point or important information..."
+                  />
+                  {newConversation.keyPoints.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeKeyPoint(index)}
+                      className="text-red-600 hover:text-red-700 p-2"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Action Items */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Action Items & Next Steps
+              </label>
+              <button
+                type="button"
+                onClick={addNextStep}
+                className="text-blue-600 hover:text-blue-700 text-sm flex items-center gap-1"
+              >
+                <Plus size={14} />
+                Add Action
+              </button>
+            </div>
+            <div className="space-y-2">
+              {newConversation.nextSteps.map((step, index) => (
+                <div key={index} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={step}
+                    onChange={(e) => updateNextStep(index, e.target.value)}
+                    className="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
+                    placeholder="Action item or follow-up task..."
+                  />
+                  {newConversation.nextSteps.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeNextStep(index)}
+                      className="text-red-600 hover:text-red-700 p-2"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-4 justify-end pt-4 border-t border-slate-200 dark:border-slate-600">
             <button
               type="button"
               onClick={() => setShowAdd(false)}
@@ -462,7 +641,7 @@ function ConversationsTab({
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               Save Conversation
             </button>
@@ -473,68 +652,94 @@ function ConversationsTab({
       {/* Conversations List */}
       <div className="space-y-4">
         {conversations.length === 0 ? (
-          <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+          <div className="text-center py-12 text-slate-500 dark:text-slate-400">
             <MessageSquare size={48} className="mx-auto mb-4 opacity-50" />
-            <p>No conversations recorded yet</p>
-            <p className="text-sm">Add your first conversation to start tracking the client journey</p>
+            <p className="text-lg font-medium mb-2">No client interactions recorded yet</p>
+            <p className="text-sm">Start tracking conversations to build a comprehensive client relationship history</p>
           </div>
         ) : (
           conversations.map((conversation) => (
             <div
               key={conversation.id}
-              className="bg-slate-50 dark:bg-slate-700 p-4 rounded-lg border border-slate-200 dark:border-slate-600"
+              className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-600 shadow-sm"
             >
-              <div className="flex items-start justify-between mb-3">
+              <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2">
                     <Calendar size={16} className="text-slate-500 dark:text-slate-400" />
                     <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                      {new Date(conversation.date).toLocaleDateString()}
+                      {new Date(conversation.date).toLocaleDateString('en-US', { 
+                        weekday: 'short', 
+                        year: 'numeric', 
+                        month: 'short', 
+                        day: 'numeric' 
+                      })}
                     </span>
                   </div>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStageColor(conversation.stage)}`}>
-                    {conversation.stage}
-                  </span>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSentimentColor(conversation.sentiment)}`}>
                     {conversation.sentiment}
                   </span>
                 </div>
-                <span className="text-xs text-slate-500 dark:text-slate-400 capitalize">
-                  {conversation.type}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500 dark:text-slate-400 capitalize bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">
+                    {conversation.type}
+                  </span>
+                  {conversation.stage && (
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStageColor(conversation.stage)}`}>
+                      {conversation.stage}
+                    </span>
+                  )}
+                </div>
               </div>
-              
-              <p className="text-slate-700 dark:text-slate-300 mb-3">
-                {conversation.summary}
-              </p>
-              
-              {conversation.keyPoints.length > 0 && conversation.keyPoints[0] && (
-                <div className="mb-3">
-                  <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-1">Key Points:</h4>
-                  <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
-                    {conversation.keyPoints.filter(point => point.trim()).map((point, index) => (
-                      <li key={index} className="flex items-start gap-2">
-                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0" />
-                        {point}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              
-              {conversation.nextSteps.length > 0 && conversation.nextSteps[0] && (
+
+              <div className="space-y-4">
+                {/* Summary */}
                 <div>
-                  <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-1">Next Steps:</h4>
-                  <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
-                    {conversation.nextSteps.filter(step => step.trim()).map((step, index) => (
-                      <li key={index} className="flex items-start gap-2">
-                        <CheckCircle size={14} className="text-green-500 mt-0.5 flex-shrink-0" />
-                        {step}
-                      </li>
-                    ))}
-                  </ul>
+                  <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Summary</h4>
+                  <p className="text-slate-900 dark:text-slate-100 leading-relaxed">
+                    {conversation.summary}
+                  </p>
                 </div>
-              )}
+
+                {/* Key Points */}
+                {conversation.keyPoints && conversation.keyPoints.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Key Takeaways</h4>
+                    <ul className="space-y-1">
+                      {conversation.keyPoints.map((point, index) => (
+                        <li key={index} className="flex items-start gap-2 text-slate-900 dark:text-slate-100">
+                          <span className="text-blue-600 mt-1.5">•</span>
+                          <span>{point}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Next Steps */}
+                {conversation.nextSteps && conversation.nextSteps.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Action Items</h4>
+                    <ul className="space-y-1">
+                      {conversation.nextSteps.map((step, index) => (
+                        <li key={index} className="flex items-start gap-2 text-slate-900 dark:text-slate-100">
+                          <CheckCircle size={16} className="text-green-600 mt-0.5 flex-shrink-0" />
+                          <span>{step}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Participants */}
+                {conversation.participants && conversation.participants.length > 0 && (
+                  <div className="pt-2 border-t border-slate-200 dark:border-slate-600">
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      Participants: {conversation.participants.join(', ')}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           ))
         )}
@@ -977,6 +1182,324 @@ function DreamCaseStudyTab({
         ) : (
           <p className="text-slate-500 dark:text-slate-400">No milestones defined yet</p>
         )}
+      </div>
+    </motion.div>
+  );
+}
+
+// Client Context Tab Component
+function ClientContextTab({ 
+  clientContext, 
+  onUpdate, 
+  isEditing, 
+  setIsEditing 
+}: {
+  clientContext: ClientContext;
+  onUpdate: (clientContext: ClientContext) => void;
+  isEditing: boolean;
+  setIsEditing: (editing: boolean) => void;
+}) {
+  const [editData, setEditData] = useState(clientContext);
+
+  const handleSave = () => {
+    onUpdate(editData);
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setEditData(clientContext);
+    setIsEditing(false);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="space-y-6"
+    >
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+          Client Context
+        </h3>
+        {!isEditing ? (
+          <button
+            onClick={() => setIsEditing(true)}
+            className="flex items-center gap-2 px-4 py-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+          >
+            <Edit3 size={16} />
+            Edit Context
+          </button>
+        ) : (
+          <div className="flex gap-2">
+            <button
+              onClick={handleCancel}
+              className="flex items-center gap-2 px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+            >
+              <X size={16} />
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Save size={16} />
+              Save
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 gap-6">
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+            Business Priorities
+          </label>
+          {isEditing ? (
+            <textarea
+              value={editData.businessPriorities.join('\n')}
+              onChange={(e) => setEditData({ 
+                ...editData, 
+                businessPriorities: e.target.value.split('\n').filter(item => item.trim())
+              })}
+              rows={3}
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
+              placeholder="One priority per line"
+            />
+          ) : (
+            <div className="space-y-1">
+              {clientContext.businessPriorities.length > 0 ? (
+                clientContext.businessPriorities.map((priority, index) => (
+                  <span key={index} className="inline-block bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-sm mr-2 mb-1">
+                    {priority}
+                  </span>
+                ))
+              ) : (
+                <p className="text-slate-500 dark:text-slate-400">No priorities specified</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+            Current Challenges
+          </label>
+          {isEditing ? (
+            <textarea
+              value={editData.currentChallenges.join('\n')}
+              onChange={(e) => setEditData({ 
+                ...editData, 
+                currentChallenges: e.target.value.split('\n').filter(item => item.trim())
+              })}
+              rows={3}
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
+              placeholder="One challenge per line"
+            />
+          ) : (
+            <div className="space-y-1">
+              {clientContext.currentChallenges.length > 0 ? (
+                clientContext.currentChallenges.map((challenge, index) => (
+                  <span key={index} className="inline-block bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 px-2 py-1 rounded text-sm mr-2 mb-1">
+                    {challenge}
+                  </span>
+                ))
+              ) : (
+                <p className="text-slate-500 dark:text-slate-400">No challenges specified</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+            Decision Makers
+          </label>
+          {isEditing ? (
+            <textarea
+              value={editData.decisionMakers.map(maker => `${maker.name} (${maker.role}) - ${maker.contact}`).join('\n')}
+              onChange={(e) => setEditData({ 
+                ...editData, 
+                decisionMakers: e.target.value.split('\n').map(line => {
+                  const [name, role, contact] = line.split(' - ');
+                  return { name, role, contact, influence: 'high' };
+                })
+              })}
+              rows={3}
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
+              placeholder="Name - Role - Contact"
+            />
+          ) : (
+            <div className="space-y-1">
+              {clientContext.decisionMakers.length > 0 ? (
+                clientContext.decisionMakers.map((maker, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <span className="text-slate-900 dark:text-slate-100">{maker.name} - {maker.role}</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">({maker.contact})</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-slate-500 dark:text-slate-400">No decision makers specified</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+            Important Dates
+          </label>
+          {isEditing ? (
+            <textarea
+              value={editData.importantDates.map(date => `${date.date} - ${date.event} (${date.type})`).join('\n')}
+                             onChange={(e) => setEditData({ 
+                 ...editData, 
+                 importantDates: e.target.value.split('\n').filter(line => line.trim()).map(line => {
+                   const parts = line.split(' - ');
+                   const date = parts[0] || '';
+                   const event = parts[1] || '';
+                   const type = (parts[2] as 'renewal' | 'review' | 'launch' | 'seasonal' | 'other') || 'other';
+                   return { date, event, type };
+                 })
+               })}
+              rows={3}
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
+              placeholder="Date - Event - Type"
+            />
+          ) : (
+            <div className="space-y-1">
+              {clientContext.importantDates.length > 0 ? (
+                clientContext.importantDates.map((date, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <span className="text-slate-900 dark:text-slate-100">{date.date}</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">({date.event} - {date.type})</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-slate-500 dark:text-slate-400">No important dates specified</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+            Competitor Information
+          </label>
+          {isEditing ? (
+            <textarea
+              value={editData.competitorInfo.join('\n')}
+              onChange={(e) => setEditData({ 
+                ...editData, 
+                competitorInfo: e.target.value.split('\n').filter(item => item.trim())
+              })}
+              rows={3}
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
+              placeholder="One competitor per line"
+            />
+          ) : (
+            <div className="space-y-1">
+              {clientContext.competitorInfo.length > 0 ? (
+                clientContext.competitorInfo.map((competitor, index) => (
+                  <span key={index} className="inline-block bg-pink-100 dark:bg-pink-900 text-pink-800 dark:text-pink-200 px-2 py-1 rounded text-sm mr-2 mb-1">
+                    {competitor}
+                  </span>
+                ))
+              ) : (
+                <p className="text-slate-500 dark:text-slate-400">No competitors specified</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+            Special Notes
+          </label>
+          {isEditing ? (
+            <textarea
+              value={editData.specialNotes}
+              onChange={(e) => setEditData({ ...editData, specialNotes: e.target.value })}
+              rows={3}
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
+              placeholder="Any additional notes or observations..."
+            />
+          ) : (
+            <p className="text-slate-900 dark:text-slate-100">{clientContext.specialNotes || 'No additional notes'}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+            Communication Preferences
+          </label>
+                     {isEditing ? (
+             <div className="space-y-3">
+               <div>
+                 <label className="block text-xs text-slate-600 dark:text-slate-400 mb-1">Frequency</label>
+                 <select
+                   value={editData.communicationPreferences.frequency}
+                   onChange={(e) => setEditData({ 
+                     ...editData, 
+                     communicationPreferences: {
+                       ...editData.communicationPreferences,
+                       frequency: e.target.value as 'weekly' | 'biweekly' | 'monthly'
+                     }
+                   })}
+                   className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
+                 >
+                   <option value="weekly">Weekly</option>
+                   <option value="biweekly">Bi-weekly</option>
+                   <option value="monthly">Monthly</option>
+                 </select>
+               </div>
+               <div>
+                 <label className="block text-xs text-slate-600 dark:text-slate-400 mb-1">Preferred Method</label>
+                 <select
+                   value={editData.communicationPreferences.method}
+                   onChange={(e) => setEditData({ 
+                     ...editData, 
+                     communicationPreferences: {
+                       ...editData.communicationPreferences,
+                       method: e.target.value as 'call' | 'email' | 'meeting' | 'text'
+                     }
+                   })}
+                   className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
+                 >
+                   <option value="call">Phone Call</option>
+                   <option value="email">Email</option>
+                   <option value="meeting">Meeting</option>
+                   <option value="text">Text/Message</option>
+                 </select>
+               </div>
+               <div>
+                 <label className="block text-xs text-slate-600 dark:text-slate-400 mb-1">Best Times</label>
+                 <input
+                   type="text"
+                   value={editData.communicationPreferences.bestTimes}
+                   onChange={(e) => setEditData({ 
+                     ...editData, 
+                     communicationPreferences: {
+                       ...editData.communicationPreferences,
+                       bestTimes: e.target.value
+                     }
+                   })}
+                   className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
+                   placeholder="e.g., Mornings, Tuesdays 2-4pm"
+                 />
+               </div>
+             </div>
+           ) : (
+             <div className="space-y-1">
+               <div className="text-slate-900 dark:text-slate-100">
+                 <span className="capitalize">{clientContext.communicationPreferences.frequency}</span> via {clientContext.communicationPreferences.method}
+               </div>
+               <div className="text-xs text-slate-500 dark:text-slate-400">
+                 Best times: {clientContext.communicationPreferences.bestTimes || 'No preference specified'}
+               </div>
+             </div>
+           )}
+        </div>
       </div>
     </motion.div>
   );
