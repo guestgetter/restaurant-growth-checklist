@@ -112,7 +112,9 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
         const profileData = await response.json();
         if (profileData && (profileData.conversations?.length > 0 || profileData.baseline?.monthlyRevenue || profileData.dreamCaseStudy?.revenueGoal)) {
           console.log('Loaded profile from database:', profileData);
-          setProfile(profileData);
+          // Ensure clientContext exists (migration for existing profiles)
+          const migratedProfile = ensureClientContext(profileData);
+          setProfile(migratedProfile);
           return;
         }
       }
@@ -126,7 +128,9 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
       try {
         const localProfile = JSON.parse(saved);
         console.log('Loaded profile from localStorage:', localProfile);
-        setProfile(localProfile);
+        // Ensure clientContext exists (migration for existing profiles)
+        const migratedProfile = ensureClientContext(localProfile);
+        setProfile(migratedProfile);
         return;
       } catch (error) {
         console.error('Error parsing profile from localStorage:', error);
@@ -176,6 +180,26 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
     };
     setProfile(newProfile);
     saveProfile(newProfile);
+  };
+
+  // Helper function to ensure clientContext exists on existing profiles
+  const ensureClientContext = (profile: any): ClientProfileData => {
+    if (!profile.clientContext) {
+      profile.clientContext = {
+        businessPriorities: [],
+        currentChallenges: [],
+        decisionMakers: [],
+        importantDates: [],
+        competitorInfo: [],
+        specialNotes: '',
+        communicationPreferences: {
+          frequency: 'weekly',
+          method: 'call',
+          bestTimes: ''
+        }
+      };
+    }
+    return profile as ClientProfileData;
   };
 
   const saveProfile = async (updatedProfile: ClientProfileData) => {
@@ -409,10 +433,10 @@ function ConversationsTab({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Filter out empty strings from arrays
+    // Filter out empty strings from arrays and ensure keyPoints is populated from summary
     const cleanedConversation = {
       ...newConversation,
-      keyPoints: newConversation.keyPoints.filter(point => point.trim() !== ''),
+      keyPoints: [], // AI summary will contain key points, so we don't need separate keyPoints
       nextSteps: newConversation.nextSteps.filter(step => step.trim() !== ''),
       participants: newConversation.participants.filter(participant => participant.trim() !== '')
     };
@@ -541,94 +565,38 @@ function ConversationsTab({
 
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Call Summary
+              AI-Generated Call Summary & Key Points
             </label>
             <textarea
               value={newConversation.summary}
               onChange={(e) => setNewConversation({ ...newConversation, summary: e.target.value })}
-              rows={3}
+              rows={6}
               className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
-              placeholder="Brief overview of the conversation, main topics discussed, client mood..."
+              placeholder="Paste AI-processed call summary here including key takeaways and important points..."
               required
             />
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              💡 Tip: Record your call, process with AI, then copy/paste the summary here
+            </p>
           </div>
 
-          {/* Key Takeaways */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Key Takeaways & Important Points
-              </label>
-              <button
-                type="button"
-                onClick={addKeyPoint}
-                className="text-blue-600 hover:text-blue-700 text-sm flex items-center gap-1"
-              >
-                <Plus size={14} />
-                Add Point
-              </button>
-            </div>
-            <div className="space-y-2">
-              {newConversation.keyPoints.map((point, index) => (
-                <div key={index} className="flex gap-2">
-                  <input
-                    type="text"
-                    value={point}
-                    onChange={(e) => updateKeyPoint(index, e.target.value)}
-                    className="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
-                    placeholder="Key point or important information..."
-                  />
-                  {newConversation.keyPoints.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeKeyPoint(index)}
-                      className="text-red-600 hover:text-red-700 p-2"
-                    >
-                      <X size={16} />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Action Items */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Action Items & Next Steps
-              </label>
-              <button
-                type="button"
-                onClick={addNextStep}
-                className="text-blue-600 hover:text-blue-700 text-sm flex items-center gap-1"
-              >
-                <Plus size={14} />
-                Add Action
-              </button>
-            </div>
-            <div className="space-y-2">
-              {newConversation.nextSteps.map((step, index) => (
-                <div key={index} className="flex gap-2">
-                  <input
-                    type="text"
-                    value={step}
-                    onChange={(e) => updateNextStep(index, e.target.value)}
-                    className="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
-                    placeholder="Action item or follow-up task..."
-                  />
-                  {newConversation.nextSteps.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeNextStep(index)}
-                      className="text-red-600 hover:text-red-700 p-2"
-                    >
-                      <X size={16} />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              Action Items & Next Steps
+            </label>
+            <textarea
+              value={newConversation.nextSteps.join('\n')}
+              onChange={(e) => setNewConversation({ 
+                ...newConversation, 
+                nextSteps: e.target.value.split('\n').filter(step => step.trim() !== '')
+              })}
+              rows={4}
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
+              placeholder="• Follow up on menu pricing discussion&#10;• Send proposal for social media package&#10;• Schedule next check-in for next Friday"
+            />
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              One action item per line (bullet points optional)
+            </p>
           </div>
 
           <div className="flex gap-4 justify-end pt-4 border-t border-slate-200 dark:border-slate-600">
@@ -695,28 +663,13 @@ function ConversationsTab({
               <div className="space-y-4">
                 {/* Summary */}
                 <div>
-                  <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Summary</h4>
-                  <p className="text-slate-900 dark:text-slate-100 leading-relaxed">
+                  <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">AI-Generated Summary</h4>
+                  <div className="text-slate-900 dark:text-slate-100 leading-relaxed whitespace-pre-line">
                     {conversation.summary}
-                  </p>
+                  </div>
                 </div>
 
-                {/* Key Points */}
-                {conversation.keyPoints && conversation.keyPoints.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Key Takeaways</h4>
-                    <ul className="space-y-1">
-                      {conversation.keyPoints.map((point, index) => (
-                        <li key={index} className="flex items-start gap-2 text-slate-900 dark:text-slate-100">
-                          <span className="text-blue-600 mt-1.5">•</span>
-                          <span>{point}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Next Steps */}
+                {/* Action Items */}
                 {conversation.nextSteps && conversation.nextSteps.length > 0 && (
                   <div>
                     <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Action Items</h4>
