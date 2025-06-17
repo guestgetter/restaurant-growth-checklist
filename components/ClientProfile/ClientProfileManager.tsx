@@ -1042,8 +1042,8 @@ function BaselineTab({
                         </label>
                         
                         {/* Upload Area */}
-                        <label 
-                          className={`block w-full border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-all relative ${
+                        <div 
+                          className={`block w-full border-2 border-dashed rounded-lg p-4 text-center transition-all relative ${
                             clipboardHint 
                               ? 'border-green-400 bg-green-50 animate-pulse' 
                               : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
@@ -1056,16 +1056,56 @@ function BaselineTab({
                               e.currentTarget.focus();
                             }
                           }}
+                          onClick={(e) => {
+                            // Only focus for paste, don't open file browser
+                            e.currentTarget.focus();
+                          }}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.currentTarget.classList.add('border-blue-400', 'bg-blue-50');
+                          }}
+                          onDragLeave={(e) => {
+                            e.preventDefault();
+                            e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50');
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50');
+                            if (e.dataTransfer?.files) {
+                              handleScreenshotUpload(e.dataTransfer.files, category.key, type as ScreenshotEntry['type']);
+                            }
+                          }}
                         >
-                          <Upload className="h-6 w-6 text-gray-400 mx-auto mb-2" />
-                          <span className="text-sm text-gray-600 block">
-                            Drop files or click to upload
-                          </span>
-                          <span className={`text-xs block mt-1 transition-colors ${
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const input = e.currentTarget.parentElement?.querySelector('input[type="file"]') as HTMLInputElement;
+                              input?.click();
+                            }}
+                            className="mx-auto mb-2 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                          >
+                            <Upload className="h-6 w-6 text-gray-400" />
+                          </button>
+                          <div className="text-sm text-gray-600">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const input = e.currentTarget.parentElement?.querySelector('input[type="file"]') as HTMLInputElement;
+                                input?.click();
+                              }}
+                              className="text-blue-600 hover:text-blue-800 underline"
+                            >
+                              Click to browse files
+                            </button>
+                            <span className="text-gray-500"> or drag & drop</span>
+                          </div>
+                          <div className={`text-xs mt-1 transition-colors ${
                             clipboardHint ? 'text-green-600 font-medium' : 'text-gray-500'
                           }`}>
-                            {clipboardHint ? '📋 Ready to paste! Press ⌘V / Ctrl+V' : 'Or paste screenshot (⌘V / Ctrl+V)'}
-                          </span>
+                            {clipboardHint ? '📋 Ready to paste! Press ⌘V / Ctrl+V' : 'Click here and paste screenshot (⌘V / Ctrl+V)'}
+                          </div>
                           <input
                             type="file"
                             multiple
@@ -1073,27 +1113,51 @@ function BaselineTab({
                             className="hidden"
                             onChange={(e) => handleScreenshotUpload(e.target.files, category.key, type as ScreenshotEntry['type'])}
                           />
-                        </label>
+                        </div>
 
                         {/* Uploaded Screenshots */}
                         <div className="mt-3 space-y-2">
                           {(Array.isArray(baseline.screenshots) ? baseline.screenshots : [])
                             .filter(s => s.category === category.key && s.type === type)
                             .map(screenshot => (
-                              <div key={screenshot.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                                <img 
-                                  src={screenshot.data} 
-                                  alt={screenshot.name}
-                                  className="w-8 h-8 object-cover rounded cursor-pointer"
+                              <div key={screenshot.id} className="group relative">
+                                {/* Large thumbnail preview */}
+                                <div 
+                                  className="w-full aspect-video bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all"
                                   onClick={() => setShowModal(screenshot)}
-                                />
-                                <span className="flex-1 text-sm truncate">{screenshot.name}</span>
-                                <button
-                                  onClick={() => handleDeleteScreenshot(screenshot.id)}
-                                  className="text-red-600 hover:text-red-800"
                                 >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
+                                  <img 
+                                    src={screenshot.data} 
+                                    alt={screenshot.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                                
+                                {/* Screenshot info overlay */}
+                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2 rounded-b-lg">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-white text-xs truncate flex-1 mr-2">
+                                      {screenshot.name}
+                                    </span>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteScreenshot(screenshot.id);
+                                      }}
+                                      className="text-white hover:text-red-300 transition-colors p-1"
+                                      title="Delete screenshot"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                </div>
+                                
+                                {/* Click to view hint */}
+                                <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                  <div className="bg-white/90 px-2 py-1 rounded text-xs font-medium">
+                                    Click to view full size
+                                  </div>
+                                </div>
                               </div>
                             ))}
                         </div>
@@ -1681,8 +1745,12 @@ function ClientProfileHeaderTab({
           <div className="flex-shrink-0">
             <div className="relative">
               <div 
-                className="w-24 h-24 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden border-4 border-white dark:border-slate-800 shadow-lg cursor-pointer hover:opacity-80 transition-opacity"
-                onClick={() => isEditing && fileInputRef.current?.click()}
+                className="w-24 h-24 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden border-4 border-white dark:border-slate-800 shadow-lg hover:opacity-80 transition-opacity"
+                onClick={(e) => {
+                  if (isEditing) {
+                    e.currentTarget.focus();
+                  }
+                }}
                 onPaste={(e) => isEditing && handleClipboardPaste(e as any, (file) => {
                   const reader = new FileReader();
                   reader.onload = (e) => {
