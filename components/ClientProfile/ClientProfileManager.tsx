@@ -153,12 +153,58 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
 
   // Helper function to ensure screenshots exists on existing profiles
   const ensureClientContext = (profile: any): ClientProfileData => {
-    if (!profile.baseline?.screenshots) {
+    // Handle baseline screenshots migration from old object format to new array format
+    if (!profile.baseline) {
       profile.baseline = {
-        ...profile.baseline,
+        monthlyRevenue: 0,
+        guestCount: 0,
+        averagePerHeadSpend: 0,
+        googleRating: 0,
         screenshots: []
       };
+    } else if (!profile.baseline.screenshots) {
+      profile.baseline.screenshots = [];
+    } else if (!Array.isArray(profile.baseline.screenshots)) {
+      // Migrate old object format to new array format
+      const oldScreenshots = profile.baseline.screenshots;
+      const newScreenshots: ScreenshotEntry[] = [];
+      
+      // Convert old format to new format
+      Object.keys(oldScreenshots).forEach(category => {
+        if (oldScreenshots[category] && typeof oldScreenshots[category] === 'object') {
+          Object.keys(oldScreenshots[category]).forEach(type => {
+            if (oldScreenshots[category][type] && typeof oldScreenshots[category][type] === 'string') {
+              newScreenshots.push({
+                id: Math.random().toString(36).substr(2, 9),
+                name: `${category}-${type}-migrated.png`,
+                data: oldScreenshots[category][type],
+                uploadedAt: new Date().toISOString(),
+                category: category as ScreenshotEntry['category'],
+                type: type as ScreenshotEntry['type'],
+                description: `Migrated ${category.replace('-', ' ')} ${type} screenshot`
+              });
+            }
+          });
+        }
+      });
+      
+      profile.baseline.screenshots = newScreenshots;
     }
+    
+    // Ensure baseline has all required numeric fields
+    if (typeof profile.baseline.monthlyRevenue !== 'number') {
+      profile.baseline.monthlyRevenue = 0;
+    }
+    if (typeof profile.baseline.guestCount !== 'number') {
+      profile.baseline.guestCount = 0;
+    }
+    if (typeof profile.baseline.averagePerHeadSpend !== 'number') {
+      profile.baseline.averagePerHeadSpend = 0;
+    }
+    if (typeof profile.baseline.googleRating !== 'number') {
+      profile.baseline.googleRating = 0;
+    }
+    
     return profile as ClientProfileData;
   };
 
@@ -242,7 +288,7 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
           ...profile,
           baseline: {
             ...profile.baseline,
-            screenshots: [...(profile.baseline.screenshots || []), newScreenshot]
+            screenshots: [...(Array.isArray(profile.baseline.screenshots) ? profile.baseline.screenshots : []), newScreenshot]
           }
         };
 
@@ -259,7 +305,7 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
       ...profile,
       baseline: {
         ...profile.baseline,
-        screenshots: (profile.baseline.screenshots || []).filter(s => s.id !== screenshotId)
+        screenshots: (Array.isArray(profile.baseline.screenshots) ? profile.baseline.screenshots : []).filter(s => s.id !== screenshotId)
       }
     };
     saveProfile(updatedProfile);
@@ -273,7 +319,7 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
       ...profile,
       baseline: {
         ...profile.baseline,
-        screenshots: (profile.baseline.screenshots || []).map(s => 
+        screenshots: (Array.isArray(profile.baseline.screenshots) ? profile.baseline.screenshots : []).map(s => 
           s.id === screenshotId 
             ? { ...s, data: newData, uploadedAt: new Date().toISOString() }
             : s
@@ -758,10 +804,10 @@ function BaselineTab({
           description: `${category.replace('-', ' ')} ${type} screenshot`
         };
 
-        const updatedProfile = {
-          ...baseline,
-          screenshots: [...(baseline.screenshots || []), newScreenshot]
-        };
+                 const updatedProfile = {
+           ...baseline,
+           screenshots: [...(Array.isArray(baseline.screenshots) ? baseline.screenshots : []), newScreenshot]
+         };
 
         onUpdate(updatedProfile);
       };
@@ -772,7 +818,7 @@ function BaselineTab({
   const handleDeleteScreenshot = (screenshotId: string) => {
     const updatedProfile = {
       ...baseline,
-      screenshots: (baseline.screenshots || []).filter(s => s.id !== screenshotId)
+      screenshots: (Array.isArray(baseline.screenshots) ? baseline.screenshots : []).filter(s => s.id !== screenshotId)
     };
     onUpdate(updatedProfile);
     setShowModal(null);
@@ -781,7 +827,7 @@ function BaselineTab({
   const handleReplaceScreenshot = (screenshotId: string, newData: string) => {
     const updatedProfile = {
       ...baseline,
-      screenshots: (baseline.screenshots || []).map(s => 
+      screenshots: (Array.isArray(baseline.screenshots) ? baseline.screenshots : []).map(s => 
         s.id === screenshotId 
           ? { ...s, data: newData, uploadedAt: new Date().toISOString() }
           : s
@@ -899,7 +945,7 @@ function BaselineTab({
 
                         {/* Uploaded Screenshots */}
                         <div className="mt-3 space-y-2">
-                          {(baseline.screenshots || [])
+                          {(Array.isArray(baseline.screenshots) ? baseline.screenshots : [])
                             .filter(s => s.category === category.key && s.type === type)
                             .map(screenshot => (
                               <div key={screenshot.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
@@ -928,7 +974,7 @@ function BaselineTab({
           )}
 
           {viewMode === 'progression' && (
-            <ScreenshotProgressionView screenshots={baseline.screenshots || []} />
+            <ScreenshotProgressionView screenshots={Array.isArray(baseline.screenshots) ? baseline.screenshots : []} />
           )}
         </div>
       </div>
