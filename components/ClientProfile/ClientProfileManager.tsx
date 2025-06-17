@@ -929,12 +929,13 @@ function BaselineTab({
   };
 
   const handleDeleteScreenshot = (screenshotId: string) => {
+    console.log('handleDeleteScreenshot called with ID:', screenshotId);
     const updatedProfile = {
       ...baseline,
       screenshots: (Array.isArray(baseline.screenshots) ? baseline.screenshots : []).filter(s => s.id !== screenshotId)
     };
+    console.log('Updated profile screenshots:', updatedProfile.screenshots.length);
     onUpdate(updatedProfile);
-    setShowModal(null);
   };
 
   const handleReplaceScreenshot = (screenshotId: string, newData: string) => {
@@ -1124,7 +1125,12 @@ function BaselineTab({
                                 {/* Large thumbnail preview */}
                                 <div 
                                   className="w-full aspect-video bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all"
-                                  onClick={() => setShowModal(screenshot)}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    console.log('Thumbnail clicked, opening modal for:', screenshot.name);
+                                    setShowModal(screenshot);
+                                  }}
                                 >
                                   <img 
                                     src={screenshot.data} 
@@ -1141,7 +1147,9 @@ function BaselineTab({
                                     </span>
                                     <button
                                       onClick={(e) => {
+                                        e.preventDefault();
                                         e.stopPropagation();
+                                        console.log('Overlay delete clicked for:', screenshot.name);
                                         handleDeleteScreenshot(screenshot.id);
                                       }}
                                       className="text-white hover:text-red-300 transition-colors p-1"
@@ -1180,8 +1188,14 @@ function BaselineTab({
         <ScreenshotModal 
           screenshot={showModal}
           onClose={() => setShowModal(null)}
-          onDelete={() => handleDeleteScreenshot(showModal.id)}
-          onReplace={(newData) => handleReplaceScreenshot(showModal.id, newData)}
+          onDelete={() => {
+            handleDeleteScreenshot(showModal.id);
+            setShowModal(null);
+          }}
+          onReplace={(newData) => {
+            handleReplaceScreenshot(showModal.id, newData);
+            setShowModal(null);
+          }}
         />
       )}
     </motion.div>
@@ -1389,6 +1403,18 @@ const ScreenshotModal = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  // Handle escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
+  
   const handleReplace = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -1403,8 +1429,18 @@ const ScreenshotModal = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-4xl max-h-[90vh] overflow-hidden">
+    <div 
+      className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div 
+        className="bg-white rounded-lg max-w-4xl max-h-[90vh] overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
           <div>
@@ -1444,7 +1480,12 @@ const ScreenshotModal = ({
               Replace
             </button>
             <button
-              onClick={onDelete}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Delete button clicked in modal');
+                onDelete();
+              }}
               className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
             >
               <Trash2 className="h-4 w-4" />
