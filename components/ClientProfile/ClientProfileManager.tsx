@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   User, 
@@ -19,7 +19,13 @@ import {
   FileText,
   Clock,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Upload,
+  Trash2,
+  Eye,
+  Globe,
+  BarChart3,
+  Share2
 } from 'lucide-react';
 
 interface ConversationNote {
@@ -34,36 +40,22 @@ interface ConversationNote {
   stage: 'prospect' | 'proposal' | 'negotiation' | 'closed' | 'onboarding' | 'active';
 }
 
+interface ScreenshotEntry {
+  id: string;
+  name: string;
+  data: string; // Base64
+  uploadedAt: string;
+  category: 'google-business' | 'website' | 'analytics' | 'social-media';
+  type: 'before' | 'progress' | 'after';
+  description?: string;
+}
+
 interface BaselineMetrics {
-  monthlyRevenue: string;
-  averagePerHeadSpend: string;
-  guestCount: string;
-  onlinePresence: {
-    googleReviews: string;
-    websiteTraffic: string;
-    socialFollowing: string;
-  };
-  marketingChannels: string[];
-  mainChallenges: string[];
-  currentTools: string[];
-  screenshots: {
-    googleBusinessProfile?: {
-      before?: string;
-      after?: string;
-    };
-    website?: {
-      before?: string;
-      after?: string;
-    };
-    analytics?: {
-      before?: string;
-      after?: string;
-    };
-    socialMedia?: {
-      before?: string;
-      after?: string;
-    };
-  };
+  monthlyRevenue: number;
+  guestCount: number;
+  averagePerHeadSpend: number;
+  googleRating: number;
+  screenshots: ScreenshotEntry[];
 }
 
 interface DreamCaseStudy {
@@ -93,6 +85,8 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
   const [activeTab, setActiveTab] = useState<'conversations' | 'baseline' | 'dream'>('conversations');
   const [isEditing, setIsEditing] = useState(false);
   const [showAddConversation, setShowAddConversation] = useState(false);
+  const [showModal, setShowModal] = useState<ScreenshotEntry | null>(null);
+  const [viewMode, setViewMode] = useState<'upload' | 'progression'>('upload');
 
   useEffect(() => {
     loadClientProfile().catch(console.error);
@@ -136,18 +130,11 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
       id: clientId,
       conversations: [],
       baseline: {
-        monthlyRevenue: '',
-        averagePerHeadSpend: '',
-        guestCount: '',
-        onlinePresence: {
-          googleReviews: '',
-          websiteTraffic: '',
-          socialFollowing: ''
-        },
-        marketingChannels: [],
-        mainChallenges: [],
-        currentTools: [],
-        screenshots: {}
+        monthlyRevenue: 0,
+        guestCount: 0,
+        averagePerHeadSpend: 0,
+        googleRating: 0,
+        screenshots: []
       },
       dreamCaseStudy: {
         timeframe: '',
@@ -169,7 +156,7 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
     if (!profile.baseline?.screenshots) {
       profile.baseline = {
         ...profile.baseline,
-        screenshots: {}
+        screenshots: []
       };
     }
     return profile as ClientProfileData;
@@ -230,7 +217,71 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
     saveProfile({ ...profile, dreamCaseStudy });
   };
 
+  const handleScreenshotUpload = (
+    files: FileList | null, 
+    category: ScreenshotEntry['category'], 
+    type: ScreenshotEntry['type']
+  ) => {
+    if (!files || !profile) return;
 
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        const newScreenshot: ScreenshotEntry = {
+          id: Math.random().toString(36).substr(2, 9),
+          name: file.name,
+          data: result,
+          uploadedAt: new Date().toISOString(),
+          category,
+          type,
+          description: `${category.replace('-', ' ')} ${type} screenshot`
+        };
+
+        const updatedProfile: ClientProfileData = {
+          ...profile,
+          baseline: {
+            ...profile.baseline,
+            screenshots: [...(profile.baseline.screenshots || []), newScreenshot]
+          }
+        };
+
+        saveProfile(updatedProfile);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleDeleteScreenshot = (screenshotId: string) => {
+    if (!profile) return;
+    
+    const updatedProfile: ClientProfileData = {
+      ...profile,
+      baseline: {
+        ...profile.baseline,
+        screenshots: (profile.baseline.screenshots || []).filter(s => s.id !== screenshotId)
+      }
+    };
+    saveProfile(updatedProfile);
+    setShowModal(null);
+  };
+
+  const handleReplaceScreenshot = (screenshotId: string, newData: string) => {
+    if (!profile) return;
+    
+    const updatedProfile: ClientProfileData = {
+      ...profile,
+      baseline: {
+        ...profile.baseline,
+        screenshots: (profile.baseline.screenshots || []).map(s => 
+          s.id === screenshotId 
+            ? { ...s, data: newData, uploadedAt: new Date().toISOString() }
+            : s
+        )
+      }
+    };
+    saveProfile(updatedProfile);
+  };
 
   if (!profile) return null;
 
@@ -320,6 +371,10 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
               onUpdate={updateBaseline}
               isEditing={isEditing}
               setIsEditing={setIsEditing}
+              showModal={showModal}
+              setShowModal={setShowModal}
+              viewMode={viewMode}
+              setViewMode={setViewMode}
             />
           )}
           {activeTab === 'dream' && (
@@ -655,12 +710,20 @@ function BaselineTab({
   baseline, 
   onUpdate, 
   isEditing, 
-  setIsEditing 
+  setIsEditing,
+  showModal,
+  setShowModal,
+  viewMode,
+  setViewMode
 }: {
   baseline: BaselineMetrics;
   onUpdate: (baseline: BaselineMetrics) => void;
   isEditing: boolean;
   setIsEditing: (editing: boolean) => void;
+  showModal: ScreenshotEntry | null;
+  setShowModal: (screenshot: ScreenshotEntry | null) => void;
+  viewMode: 'upload' | 'progression';
+  setViewMode: (mode: 'upload' | 'progression') => void;
 }) {
   const [editData, setEditData] = useState(baseline);
 
@@ -674,22 +737,57 @@ function BaselineTab({
     setIsEditing(false);
   };
 
-  const handleScreenshotUpload = (category: string, type: 'before' | 'after', file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const imageData = e.target?.result as string;
-      setEditData({
-        ...editData,
-        screenshots: {
-          ...editData.screenshots,
-          [category]: {
-            ...editData.screenshots[category as keyof typeof editData.screenshots],
-            [type]: imageData
-          }
-        }
-      });
+  const handleScreenshotUpload = (
+    files: FileList | null, 
+    category: ScreenshotEntry['category'], 
+    type: ScreenshotEntry['type']
+  ) => {
+    if (!files) return;
+
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        const newScreenshot: ScreenshotEntry = {
+          id: Math.random().toString(36).substr(2, 9),
+          name: file.name,
+          data: result,
+          uploadedAt: new Date().toISOString(),
+          category,
+          type,
+          description: `${category.replace('-', ' ')} ${type} screenshot`
+        };
+
+        const updatedProfile = {
+          ...baseline,
+          screenshots: [...(baseline.screenshots || []), newScreenshot]
+        };
+
+        onUpdate(updatedProfile);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleDeleteScreenshot = (screenshotId: string) => {
+    const updatedProfile = {
+      ...baseline,
+      screenshots: (baseline.screenshots || []).filter(s => s.id !== screenshotId)
     };
-    reader.readAsDataURL(file);
+    onUpdate(updatedProfile);
+    setShowModal(null);
+  };
+
+  const handleReplaceScreenshot = (screenshotId: string, newData: string) => {
+    const updatedProfile = {
+      ...baseline,
+      screenshots: (baseline.screenshots || []).map(s => 
+        s.id === screenshotId 
+          ? { ...s, data: newData, uploadedAt: new Date().toISOString() }
+          : s
+      )
+    };
+    onUpdate(updatedProfile);
   };
 
   return (
@@ -697,7 +795,7 @@ function BaselineTab({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="space-y-6"
+      className="space-y-8"
     >
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
@@ -731,496 +829,119 @@ function BaselineTab({
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Core Metrics */}
-        <div className="space-y-4">
-          <h4 className="font-medium text-slate-900 dark:text-slate-100">Core Restaurant Metrics</h4>
-          
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Monthly Revenue
-            </label>
-            {isEditing ? (
-              <input
-                type="text"
-                value={editData.monthlyRevenue}
-                onChange={(e) => setEditData({ ...editData, monthlyRevenue: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
-                placeholder="e.g., $45,000"
-              />
-            ) : (
-              <p className="text-slate-900 dark:text-slate-100">{baseline.monthlyRevenue || 'Not set'}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Average Per Head Spend
-            </label>
-            {isEditing ? (
-              <input
-                type="text"
-                value={editData.averagePerHeadSpend}
-                onChange={(e) => setEditData({ ...editData, averagePerHeadSpend: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
-                placeholder="e.g., $28"
-              />
-            ) : (
-              <p className="text-slate-900 dark:text-slate-100">{baseline.averagePerHeadSpend || 'Not set'}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Monthly Guest Count
-            </label>
-            {isEditing ? (
-              <input
-                type="text"
-                value={editData.guestCount}
-                onChange={(e) => setEditData({ ...editData, guestCount: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
-                placeholder="e.g., 1,600"
-              />
-            ) : (
-              <p className="text-slate-900 dark:text-slate-100">{baseline.guestCount || 'Not set'}</p>
-            )}
-          </div>
-        </div>
-
-        {/* Online Presence */}
-        <div className="space-y-4">
-          <h4 className="font-medium text-slate-900 dark:text-slate-100">Online Presence</h4>
-          
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Google Reviews
-            </label>
-            {isEditing ? (
-              <input
-                type="text"
-                value={editData.onlinePresence.googleReviews}
-                onChange={(e) => setEditData({ 
-                  ...editData, 
-                  onlinePresence: { ...editData.onlinePresence, googleReviews: e.target.value }
-                })}
-                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
-                placeholder="e.g., 4.2 stars (127 reviews)"
-              />
-            ) : (
-              <p className="text-slate-900 dark:text-slate-100">{baseline.onlinePresence.googleReviews || 'Not set'}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Website Traffic
-            </label>
-            {isEditing ? (
-              <input
-                type="text"
-                value={editData.onlinePresence.websiteTraffic}
-                onChange={(e) => setEditData({ 
-                  ...editData, 
-                  onlinePresence: { ...editData.onlinePresence, websiteTraffic: e.target.value }
-                })}
-                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
-                placeholder="e.g., 2,500 monthly visitors"
-              />
-            ) : (
-              <p className="text-slate-900 dark:text-slate-100">{baseline.onlinePresence.websiteTraffic || 'Not set'}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Social Following
-            </label>
-            {isEditing ? (
-              <input
-                type="text"
-                value={editData.onlinePresence.socialFollowing}
-                onChange={(e) => setEditData({ 
-                  ...editData, 
-                  onlinePresence: { ...editData.onlinePresence, socialFollowing: e.target.value }
-                })}
-                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
-                placeholder="e.g., 850 Instagram, 420 Facebook"
-              />
-            ) : (
-              <p className="text-slate-900 dark:text-slate-100">{baseline.onlinePresence.socialFollowing || 'Not set'}</p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Case Study Screenshots */}
-      <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
-        <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-4">Case Study Screenshots (Before & After)</h4>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          
-          {/* Google Business Profile */}
-          <div className="space-y-3">
-            <h5 className="text-sm font-medium text-slate-700 dark:text-slate-300">Google Business Profile</h5>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-slate-600 dark:text-slate-400 mb-2">Before</label>
-                {isEditing ? (
-                  <div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleScreenshotUpload('googleBusinessProfile', 'before', file);
-                      }}
-                      className="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                    />
-                    {editData.screenshots?.googleBusinessProfile?.before && (
-                      <img
-                        src={editData.screenshots.googleBusinessProfile.before}
-                        alt="GBP Before"
-                        className="mt-2 w-full h-32 object-cover rounded border"
-                      />
-                    )}
-                  </div>
-                ) : baseline.screenshots?.googleBusinessProfile?.before ? (
-                  <img
-                    src={baseline.screenshots.googleBusinessProfile.before}
-                    alt="GBP Before"
-                    className="w-full h-32 object-cover rounded border"
-                  />
-                ) : (
-                  <div className="w-full h-32 bg-slate-100 dark:bg-slate-700 rounded border flex items-center justify-center text-slate-500">
-                    No screenshot
-                  </div>
-                )}
-              </div>
-              
-              <div>
-                <label className="block text-xs text-slate-600 dark:text-slate-400 mb-2">After</label>
-                {isEditing ? (
-                  <div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleScreenshotUpload('googleBusinessProfile', 'after', file);
-                      }}
-                      className="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
-                    />
-                    {editData.screenshots?.googleBusinessProfile?.after && (
-                      <img
-                        src={editData.screenshots.googleBusinessProfile.after}
-                        alt="GBP After"
-                        className="mt-2 w-full h-32 object-cover rounded border"
-                      />
-                    )}
-                  </div>
-                ) : baseline.screenshots?.googleBusinessProfile?.after ? (
-                  <img
-                    src={baseline.screenshots.googleBusinessProfile.after}
-                    alt="GBP After"
-                    className="w-full h-32 object-cover rounded border"
-                  />
-                ) : (
-                  <div className="w-full h-32 bg-slate-100 dark:bg-slate-700 rounded border flex items-center justify-center text-slate-500">
-                    No screenshot
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Website */}
-          <div className="space-y-3">
-            <h5 className="text-sm font-medium text-slate-700 dark:text-slate-300">Website</h5>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-slate-600 dark:text-slate-400 mb-2">Before</label>
-                {isEditing ? (
-                  <div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleScreenshotUpload('website', 'before', file);
-                      }}
-                      className="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                    />
-                    {editData.screenshots?.website?.before && (
-                      <img
-                        src={editData.screenshots.website.before}
-                        alt="Website Before"
-                        className="mt-2 w-full h-32 object-cover rounded border"
-                      />
-                    )}
-                  </div>
-                ) : baseline.screenshots?.website?.before ? (
-                  <img
-                    src={baseline.screenshots.website.before}
-                    alt="Website Before"
-                    className="w-full h-32 object-cover rounded border"
-                  />
-                ) : (
-                  <div className="w-full h-32 bg-slate-100 dark:bg-slate-700 rounded border flex items-center justify-center text-slate-500">
-                    No screenshot
-                  </div>
-                )}
-              </div>
-              
-              <div>
-                <label className="block text-xs text-slate-600 dark:text-slate-400 mb-2">After</label>
-                {isEditing ? (
-                  <div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleScreenshotUpload('website', 'after', file);
-                      }}
-                      className="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
-                    />
-                    {editData.screenshots?.website?.after && (
-                      <img
-                        src={editData.screenshots.website.after}
-                        alt="Website After"
-                        className="mt-2 w-full h-32 object-cover rounded border"
-                      />
-                    )}
-                  </div>
-                ) : baseline.screenshots?.website?.after ? (
-                  <img
-                    src={baseline.screenshots.website.after}
-                    alt="Website After"
-                    className="w-full h-32 object-cover rounded border"
-                  />
-                ) : (
-                  <div className="w-full h-32 bg-slate-100 dark:bg-slate-700 rounded border flex items-center justify-center text-slate-500">
-                    No screenshot
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Analytics */}
-          <div className="space-y-3">
-            <h5 className="text-sm font-medium text-slate-700 dark:text-slate-300">Analytics Dashboard</h5>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-slate-600 dark:text-slate-400 mb-2">Before</label>
-                {isEditing ? (
-                  <div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleScreenshotUpload('analytics', 'before', file);
-                      }}
-                      className="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                    />
-                    {editData.screenshots?.analytics?.before && (
-                      <img
-                        src={editData.screenshots.analytics.before}
-                        alt="Analytics Before"
-                        className="mt-2 w-full h-32 object-cover rounded border"
-                      />
-                    )}
-                  </div>
-                ) : baseline.screenshots?.analytics?.before ? (
-                  <img
-                    src={baseline.screenshots.analytics.before}
-                    alt="Analytics Before"
-                    className="w-full h-32 object-cover rounded border"
-                  />
-                ) : (
-                  <div className="w-full h-32 bg-slate-100 dark:bg-slate-700 rounded border flex items-center justify-center text-slate-500">
-                    No screenshot
-                  </div>
-                )}
-              </div>
-              
-              <div>
-                <label className="block text-xs text-slate-600 dark:text-slate-400 mb-2">After</label>
-                {isEditing ? (
-                  <div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleScreenshotUpload('analytics', 'after', file);
-                      }}
-                      className="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
-                    />
-                    {editData.screenshots?.analytics?.after && (
-                      <img
-                        src={editData.screenshots.analytics.after}
-                        alt="Analytics After"
-                        className="mt-2 w-full h-32 object-cover rounded border"
-                      />
-                    )}
-                  </div>
-                ) : baseline.screenshots?.analytics?.after ? (
-                  <img
-                    src={baseline.screenshots.analytics.after}
-                    alt="Analytics After"
-                    className="w-full h-32 object-cover rounded border"
-                  />
-                ) : (
-                  <div className="w-full h-32 bg-slate-100 dark:bg-slate-700 rounded border flex items-center justify-center text-slate-500">
-                    No screenshot
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Social Media */}
-          <div className="space-y-3">
-            <h5 className="text-sm font-medium text-slate-700 dark:text-slate-300">Social Media</h5>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-slate-600 dark:text-slate-400 mb-2">Before</label>
-                {isEditing ? (
-                  <div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleScreenshotUpload('socialMedia', 'before', file);
-                      }}
-                      className="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                    />
-                    {editData.screenshots?.socialMedia?.before && (
-                      <img
-                        src={editData.screenshots.socialMedia.before}
-                        alt="Social Media Before"
-                        className="mt-2 w-full h-32 object-cover rounded border"
-                      />
-                    )}
-                  </div>
-                ) : baseline.screenshots?.socialMedia?.before ? (
-                  <img
-                    src={baseline.screenshots.socialMedia.before}
-                    alt="Social Media Before"
-                    className="w-full h-32 object-cover rounded border"
-                  />
-                ) : (
-                  <div className="w-full h-32 bg-slate-100 dark:bg-slate-700 rounded border flex items-center justify-center text-slate-500">
-                    No screenshot
-                  </div>
-                )}
-              </div>
-              
-              <div>
-                <label className="block text-xs text-slate-600 dark:text-slate-400 mb-2">After</label>
-                {isEditing ? (
-                  <div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleScreenshotUpload('socialMedia', 'after', file);
-                      }}
-                      className="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
-                    />
-                    {editData.screenshots?.socialMedia?.after && (
-                      <img
-                        src={editData.screenshots.socialMedia.after}
-                        alt="Social Media After"
-                        className="mt-2 w-full h-32 object-cover rounded border"
-                      />
-                    )}
-                  </div>
-                ) : baseline.screenshots?.socialMedia?.after ? (
-                  <img
-                    src={baseline.screenshots.socialMedia.after}
-                    alt="Social Media After"
-                    className="w-full h-32 object-cover rounded border"
-                  />
-                ) : (
-                  <div className="w-full h-32 bg-slate-100 dark:bg-slate-700 rounded border flex items-center justify-center text-slate-500">
-                    No screenshot
-                  </div>
-                )}
-              </div>
+      {/* Screenshot Management */}
+      <div className="bg-white rounded-lg border">
+        <div className="p-6 border-b">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Case Study Assets & Screenshots</h3>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setViewMode('upload')}
+                className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                  viewMode === 'upload' 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Upload & Manage
+              </button>
+              <button
+                onClick={() => setViewMode('progression')}
+                className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                  viewMode === 'progression' 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                View Progression
+              </button>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Additional Baseline Info */}
-      <div className="border-t border-slate-200 dark:border-slate-700 pt-6 space-y-4">
-        <h4 className="font-medium text-slate-900 dark:text-slate-100">Additional Context</h4>
-        
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-            Marketing Channels
-          </label>
-          {isEditing ? (
-            <textarea
-              value={editData.marketingChannels.join('\n')}
-              onChange={(e) => setEditData({ 
-                ...editData, 
-                marketingChannels: e.target.value.split('\n').filter(channel => channel.trim())
-              })}
-              rows={2}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
-              placeholder="One channel per line (e.g., Word of mouth, Yelp, Social media)"
-            />
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {baseline.marketingChannels.length > 0 ? (
-                baseline.marketingChannels.map((channel, index) => (
-                  <span key={index} className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-sm">
-                    {channel}
-                  </span>
-                ))
-              ) : (
-                <p className="text-slate-500 dark:text-slate-400">No channels specified</p>
-              )}
+        <div className="p-6">
+          {viewMode === 'upload' && (
+            <div className="space-y-6">
+              {/* Upload Areas */}
+              {[
+                { key: 'google-business' as const, label: 'Google Business Profile', icon: MapPin },
+                { key: 'website' as const, label: 'Website', icon: Globe },
+                { key: 'analytics' as const, label: 'Analytics Dashboard', icon: BarChart3 },
+                { key: 'social-media' as const, label: 'Social Media', icon: Share2 }
+              ].map(category => (
+                <div key={category.key} className="border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <category.icon className="h-5 w-5 text-blue-600" />
+                    <h4 className="font-medium">{category.label}</h4>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    {['before', 'progress', 'after'].map(type => (
+                      <div key={type}>
+                        <label className="block text-sm font-medium text-gray-700 mb-2 capitalize">
+                          {type} {type === 'progress' ? 'Updates' : ''}
+                        </label>
+                        
+                        {/* Upload Area */}
+                        <label className="block w-full border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                          <Upload className="h-6 w-6 text-gray-400 mx-auto mb-2" />
+                          <span className="text-sm text-gray-600">
+                            Drop files or click to upload
+                          </span>
+                          <input
+                            type="file"
+                            multiple
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => handleScreenshotUpload(e.target.files, category.key, type as ScreenshotEntry['type'])}
+                          />
+                        </label>
+
+                        {/* Uploaded Screenshots */}
+                        <div className="mt-3 space-y-2">
+                          {(baseline.screenshots || [])
+                            .filter(s => s.category === category.key && s.type === type)
+                            .map(screenshot => (
+                              <div key={screenshot.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                                <img 
+                                  src={screenshot.data} 
+                                  alt={screenshot.name}
+                                  className="w-8 h-8 object-cover rounded cursor-pointer"
+                                  onClick={() => setShowModal(screenshot)}
+                                />
+                                <span className="flex-1 text-sm truncate">{screenshot.name}</span>
+                                <button
+                                  onClick={() => handleDeleteScreenshot(screenshot.id)}
+                                  className="text-red-600 hover:text-red-800"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
-        </div>
 
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-            Main Challenges
-          </label>
-          {isEditing ? (
-            <textarea
-              value={editData.mainChallenges.join('\n')}
-              onChange={(e) => setEditData({ 
-                ...editData, 
-                mainChallenges: e.target.value.split('\n').filter(challenge => challenge.trim())
-              })}
-              rows={2}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
-              placeholder="One challenge per line"
-            />
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {baseline.mainChallenges.length > 0 ? (
-                baseline.mainChallenges.map((challenge, index) => (
-                  <span key={index} className="bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 px-2 py-1 rounded text-sm">
-                    {challenge}
-                  </span>
-                ))
-              ) : (
-                <p className="text-slate-500 dark:text-slate-400">No challenges specified</p>
-              )}
-            </div>
+          {viewMode === 'progression' && (
+            <ScreenshotProgressionView screenshots={baseline.screenshots || []} />
           )}
         </div>
       </div>
+
+      {/* Screenshot Modal */}
+      {showModal && (
+        <ScreenshotModal 
+          screenshot={showModal}
+          onClose={() => setShowModal(null)}
+          onDelete={() => handleDeleteScreenshot(showModal.id)}
+          onReplace={(newData) => handleReplaceScreenshot(showModal.id, newData)}
+        />
+      )}
     </motion.div>
   );
 }
@@ -1410,4 +1131,239 @@ function DreamCaseStudyTab({
       </div>
     </motion.div>
   );
-} 
+}
+
+// Add this new component before ClientProfileManager
+const ScreenshotModal = ({ 
+  screenshot, 
+  onClose, 
+  onDelete, 
+  onReplace 
+}: { 
+  screenshot: ScreenshotEntry; 
+  onClose: () => void;
+  onDelete: () => void;
+  onReplace: (newData: string) => void;
+}) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const handleReplace = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        onReplace(result);
+        onClose();
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg max-w-4xl max-h-[90vh] overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b">
+          <div>
+            <h3 className="font-semibold text-lg">{screenshot.name}</h3>
+            <p className="text-sm text-gray-600">
+              {screenshot.category.replace('-', ' ').toUpperCase()} • {screenshot.type.toUpperCase()} • 
+              {new Date(screenshot.uploadedAt).toLocaleDateString()}
+            </p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X className="h-6 w-6" />
+          </button>
+        </div>
+        
+        {/* Image */}
+        <div className="max-h-[60vh] overflow-auto p-4">
+          <img 
+            src={screenshot.data} 
+            alt={screenshot.name}
+            className="max-w-full h-auto rounded-lg shadow-lg"
+          />
+          {screenshot.description && (
+            <p className="mt-4 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+              {screenshot.description}
+            </p>
+          )}
+        </div>
+        
+        {/* Actions */}
+        <div className="flex items-center justify-between p-4 border-t bg-gray-50">
+          <div className="flex gap-2">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              <Upload className="h-4 w-4" />
+              Replace
+            </button>
+            <button
+              onClick={onDelete}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete
+            </button>
+          </div>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+      
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleReplace}
+        className="hidden"
+      />
+    </div>
+  );
+};
+
+const ScreenshotProgressionView = ({ screenshots }: { screenshots: ScreenshotEntry[] }) => {
+  const [selectedCategory, setSelectedCategory] = useState<ScreenshotEntry['category']>('google-business');
+  
+  const categories = [
+    { key: 'google-business' as const, label: 'Google Business Profile' },
+    { key: 'website' as const, label: 'Website' },
+    { key: 'analytics' as const, label: 'Analytics' },
+    { key: 'social-media' as const, label: 'Social Media' }
+  ];
+  
+  const getScreenshotsByType = (category: ScreenshotEntry['category'], type: ScreenshotEntry['type']) => {
+    return screenshots.filter(s => s.category === category && s.type === type);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Category Tabs */}
+      <div className="flex flex-wrap gap-2">
+        {categories.map(category => (
+          <button
+            key={category.key}
+            onClick={() => setSelectedCategory(category.key)}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              selectedCategory === category.key
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            {category.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Progression Timeline */}
+      <div className="bg-white rounded-lg border">
+        <div className="p-4 border-b">
+          <h4 className="font-semibold">
+            {categories.find(c => c.key === selectedCategory)?.label} Progression
+          </h4>
+        </div>
+        
+        <div className="p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Before */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                <h5 className="font-medium text-gray-900">Before</h5>
+              </div>
+              <div className="space-y-2">
+                {getScreenshotsByType(selectedCategory, 'before').map(screenshot => (
+                  <ScreenshotThumbnail key={screenshot.id} screenshot={screenshot} />
+                ))}
+                {getScreenshotsByType(selectedCategory, 'before').length === 0 && (
+                  <div className="text-sm text-gray-500 italic">No before screenshots</div>
+                )}
+              </div>
+            </div>
+
+            {/* Progress */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                <h5 className="font-medium text-gray-900">Progress Updates</h5>
+              </div>
+              <div className="space-y-2">
+                {getScreenshotsByType(selectedCategory, 'progress').map(screenshot => (
+                  <ScreenshotThumbnail key={screenshot.id} screenshot={screenshot} />
+                ))}
+                {getScreenshotsByType(selectedCategory, 'progress').length === 0 && (
+                  <div className="text-sm text-gray-500 italic">No progress screenshots</div>
+                )}
+              </div>
+            </div>
+
+            {/* After */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                <h5 className="font-medium text-gray-900">After</h5>
+              </div>
+              <div className="space-y-2">
+                {getScreenshotsByType(selectedCategory, 'after').map(screenshot => (
+                  <ScreenshotThumbnail key={screenshot.id} screenshot={screenshot} />
+                ))}
+                {getScreenshotsByType(selectedCategory, 'after').length === 0 && (
+                  <div className="text-sm text-gray-500 italic">No after screenshots</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ScreenshotThumbnail = ({ screenshot }: { screenshot: ScreenshotEntry }) => {
+  const [showModal, setShowModal] = useState(false);
+  
+  return (
+    <>
+      <div 
+        onClick={() => setShowModal(true)}
+        className="group relative cursor-pointer bg-gray-50 rounded-lg overflow-hidden border hover:border-blue-300 transition-colors"
+      >
+        <img 
+          src={screenshot.data} 
+          alt={screenshot.name}
+          className="w-full h-24 object-cover"
+        />
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+          <Eye className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+        </div>
+        <div className="p-2">
+          <p className="text-xs font-medium truncate">{screenshot.name}</p>
+          <p className="text-xs text-gray-500">
+            {new Date(screenshot.uploadedAt).toLocaleDateString()}
+          </p>
+        </div>
+      </div>
+      
+      {showModal && (
+        <ScreenshotModal 
+          screenshot={screenshot}
+          onClose={() => setShowModal(false)}
+          onDelete={() => {
+            // This will be handled by parent component
+            setShowModal(false);
+          }}
+          onReplace={(newData) => {
+            // This will be handled by parent component
+          }}
+        />
+      )}
+    </>
+  );
+}; 
