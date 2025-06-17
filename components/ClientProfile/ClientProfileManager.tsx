@@ -25,7 +25,10 @@ import {
   Eye,
   Globe,
   BarChart3,
-  Share2
+  Share2,
+  Camera,
+  Users,
+  Briefcase
 } from 'lucide-react';
 
 interface ConversationNote {
@@ -72,17 +75,40 @@ interface DreamCaseStudy {
   }>;
 }
 
+interface ClientContact {
+  name: string;
+  role: string;
+  email: string;
+  phone: string;
+}
+
+interface ClientProfileHeader {
+  profilePhoto?: string; // Base64 image
+  primaryContact: ClientContact;
+  secondaryContacts: ClientContact[];
+  quickContext: {
+    priorities: string[];
+    preferences: string[];
+    keyNotes: string;
+    communicationStyle: 'formal' | 'casual' | 'direct' | 'relationship-focused';
+    bestContactMethod: 'email' | 'phone' | 'text' | 'in-person';
+    timezone: string;
+  };
+}
+
 interface ClientProfileData {
   id: string;
   conversations: ConversationNote[];
   baseline: BaselineMetrics;
   dreamCaseStudy: DreamCaseStudy;
+  profileHeader: ClientProfileHeader;
   lastUpdated: string;
 }
 
 export default function ClientProfileManager({ clientId }: { clientId: string }) {
   const [profile, setProfile] = useState<ClientProfileData | null>(null);
-  const [activeTab, setActiveTab] = useState<'conversations' | 'baseline' | 'dream'>('conversations');
+  const [activeTab, setActiveTab] = useState<'header' | 'conversations' | 'baseline' | 'dream'>('header');
+  const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [showAddConversation, setShowAddConversation] = useState(false);
   const [showModal, setShowModal] = useState<ScreenshotEntry | null>(null);
@@ -94,65 +120,84 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
 
   const loadClientProfile = async () => {
     try {
-      // Try to load from database first
+      setLoading(true);
       const response = await fetch(`/api/clients/${clientId}/profile`);
+      
       if (response.ok) {
-        const profileData = await response.json();
-        if (profileData && (profileData.conversations?.length > 0 || profileData.baseline?.monthlyRevenue || profileData.dreamCaseStudy?.revenueGoal)) {
-          console.log('Loaded profile from database:', profileData);
-          // Ensure clientContext exists (migration for existing profiles)
-          const migratedProfile = ensureClientContext(profileData);
-          setProfile(migratedProfile);
-          return;
-        }
+        const data = await response.json();
+        const contextualizedProfile = ensureClientContext(data);
+        setProfile(contextualizedProfile);
+      } else {
+        // Create new profile
+        const newProfile: ClientProfileData = {
+          id: clientId,
+          conversations: [],
+          baseline: {
+            monthlyRevenue: 0,
+            guestCount: 0,
+            averagePerHeadSpend: 0,
+            googleRating: 0,
+            screenshots: []
+          },
+          dreamCaseStudy: {
+            timeframe: '',
+            revenueGoal: '',
+            customerGrowthGoal: '',
+            marketExpansion: '',
+            brandVision: '',
+            successMetrics: [],
+            milestones: []
+          },
+          profileHeader: {
+            primaryContact: {
+              name: '',
+              role: '',
+              email: '',
+              phone: ''
+            },
+            secondaryContacts: [],
+            quickContext: {
+              priorities: [],
+              preferences: [],
+              keyNotes: '',
+              communicationStyle: 'relationship-focused',
+              bestContactMethod: 'email',
+              timezone: 'America/New_York'
+            }
+          },
+          lastUpdated: new Date().toISOString()
+        };
+        setProfile(newProfile);
       }
     } catch (error) {
-      console.error('Failed to load profile from database:', error);
+      console.error('Error loading client profile:', error);
+    } finally {
+      setLoading(false);
     }
-
-    // Fallback to localStorage
-    const saved = localStorage.getItem(`client-profile-${clientId}`);
-    if (saved) {
-      try {
-        const localProfile = JSON.parse(saved);
-        console.log('Loaded profile from localStorage:', localProfile);
-        // Ensure clientContext exists (migration for existing profiles)
-        const migratedProfile = ensureClientContext(localProfile);
-        setProfile(migratedProfile);
-        return;
-      } catch (error) {
-        console.error('Error parsing profile from localStorage:', error);
-      }
-    }
-
-    // Initialize empty profile if nothing exists
-    const newProfile: ClientProfileData = {
-      id: clientId,
-      conversations: [],
-      baseline: {
-        monthlyRevenue: 0,
-        guestCount: 0,
-        averagePerHeadSpend: 0,
-        googleRating: 0,
-        screenshots: []
-      },
-      dreamCaseStudy: {
-        timeframe: '',
-        revenueGoal: '',
-        customerGrowthGoal: '',
-        marketExpansion: '',
-        brandVision: '',
-        successMetrics: [],
-        milestones: []
-      },
-      lastUpdated: new Date().toISOString()
-    };
-    setProfile(newProfile);
-    saveProfile(newProfile);
   };
 
-  // Helper function to ensure screenshots exists on existing profiles
   const ensureClientContext = (profile: any): ClientProfileData => {
+    // Handle profile header
+    if (!profile.profileHeader) {
+      profile.profileHeader = {
+        primaryContact: {
+          name: '',
+          role: '',
+          email: '',
+          phone: ''
+        },
+        secondaryContacts: [],
+        quickContext: {
+          priorities: [],
+          preferences: [],
+          keyNotes: '',
+          communicationStyle: 'relationship-focused',
+          bestContactMethod: 'email',
+          timezone: 'America/New_York'
+        }
+      };
+    }
+
     // Handle baseline screenshots migration from old object format to new array format
     if (!profile.baseline) {
       profile.baseline = {
@@ -263,6 +308,11 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
     saveProfile({ ...profile, dreamCaseStudy });
   };
 
+  const updateProfileHeader = (profileHeader: ClientProfileHeader) => {
+    if (!profile) return;
+    saveProfile({ ...profile, profileHeader });
+  };
+
   const handleScreenshotUpload = (
     files: FileList | null, 
     category: ScreenshotEntry['category'], 
@@ -342,10 +392,10 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
             </div>
             <div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                Client Profile
+                Account Manager Command Center
               </h2>
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Complete view of client journey and goals
+                Complete client profile and relationship management
               </p>
             </div>
           </div>
@@ -358,6 +408,19 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
       {/* Tab Navigation */}
       <div className="border-b border-slate-200 dark:border-slate-700">
         <nav className="flex">
+          <button
+            onClick={() => setActiveTab('header')}
+            className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'header'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Users size={16} />
+              Client Profile
+            </div>
+          </button>
           <button
             onClick={() => setActiveTab('conversations')}
             className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
@@ -381,7 +444,7 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
           >
             <div className="flex items-center gap-2">
               <TrendingUp size={16} />
-              Starting Baseline
+              Starting Baseline & Case Study Assets
             </div>
           </button>
           <button
@@ -403,6 +466,14 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
       {/* Tab Content */}
       <div className="p-6">
         <AnimatePresence mode="wait">
+          {activeTab === 'header' && (
+            <ClientProfileHeaderTab
+              profileHeader={profile.profileHeader}
+              onUpdate={updateProfileHeader}
+              isEditing={isEditing}
+              setIsEditing={setIsEditing}
+            />
+          )}
           {activeTab === 'conversations' && (
             <ConversationsTab
               conversations={profile.conversations}
@@ -1412,4 +1483,504 @@ const ScreenshotThumbnail = ({ screenshot }: { screenshot: ScreenshotEntry }) =>
       )}
     </>
   );
-}; 
+};
+
+// New Client Profile Header Tab Component
+function ClientProfileHeaderTab({
+  profileHeader,
+  onUpdate,
+  isEditing,
+  setIsEditing
+}: {
+  profileHeader: ClientProfileHeader;
+  onUpdate: (profileHeader: ClientProfileHeader) => void;
+  isEditing: boolean;
+  setIsEditing: (editing: boolean) => void;
+}) {
+  const [editData, setEditData] = useState(profileHeader);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSave = () => {
+    onUpdate(editData);
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setEditData(profileHeader);
+    setIsEditing(false);
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setEditData({
+          ...editData,
+          profilePhoto: result
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const addSecondaryContact = () => {
+    setEditData({
+      ...editData,
+      secondaryContacts: [
+        ...editData.secondaryContacts,
+        { name: '', role: '', email: '', phone: '' }
+      ]
+    });
+  };
+
+  const updateSecondaryContact = (index: number, field: keyof ClientContact, value: string) => {
+    const updated = [...editData.secondaryContacts];
+    updated[index] = { ...updated[index], [field]: value };
+    setEditData({ ...editData, secondaryContacts: updated });
+  };
+
+  const removeSecondaryContact = (index: number) => {
+    const updated = editData.secondaryContacts.filter((_, i) => i !== index);
+    setEditData({ ...editData, secondaryContacts: updated });
+  };
+
+  const addPriority = () => {
+    setEditData({
+      ...editData,
+      quickContext: {
+        ...editData.quickContext,
+        priorities: [...editData.quickContext.priorities, '']
+      }
+    });
+  };
+
+  const updatePriority = (index: number, value: string) => {
+    const updated = [...editData.quickContext.priorities];
+    updated[index] = value;
+    setEditData({
+      ...editData,
+      quickContext: { ...editData.quickContext, priorities: updated }
+    });
+  };
+
+  const removePriority = (index: number) => {
+    const updated = editData.quickContext.priorities.filter((_, i) => i !== index);
+    setEditData({
+      ...editData,
+      quickContext: { ...editData.quickContext, priorities: updated }
+    });
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="space-y-6"
+    >
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+          Client Profile & Quick Context
+        </h3>
+        {!isEditing ? (
+          <button
+            onClick={() => setIsEditing(true)}
+            className="flex items-center gap-2 px-4 py-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+          >
+            <Edit3 size={16} />
+            Edit Profile
+          </button>
+        ) : (
+          <div className="flex gap-2">
+            <button
+              onClick={handleCancel}
+              className="flex items-center gap-2 px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+            >
+              <X size={16} />
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Save size={16} />
+              Save Profile
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Profile Photo & Primary Contact */}
+      <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-6">
+        <div className="flex items-start gap-6">
+          {/* Profile Photo */}
+          <div className="flex-shrink-0">
+            <div className="relative">
+              <div className="w-24 h-24 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden border-4 border-white dark:border-slate-800 shadow-lg">
+                {(editData.profilePhoto || profileHeader.profilePhoto) ? (
+                  <img
+                    src={editData.profilePhoto || profileHeader.profilePhoto}
+                    alt="Client profile"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Users className="h-8 w-8 text-slate-400" />
+                  </div>
+                )}
+              </div>
+              {isEditing && (
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute -bottom-1 -right-1 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors shadow-lg"
+                >
+                  <Camera className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Primary Contact Info */}
+          <div className="flex-1 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Primary Contact Name
+                </label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editData.primaryContact.name}
+                    onChange={(e) => setEditData({
+                      ...editData,
+                      primaryContact: { ...editData.primaryContact, name: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
+                    placeholder="e.g., Sarah Johnson"
+                  />
+                ) : (
+                  <p className="text-lg font-medium text-slate-900 dark:text-slate-100">
+                    {profileHeader.primaryContact.name || 'Not set'}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Role/Title
+                </label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editData.primaryContact.role}
+                    onChange={(e) => setEditData({
+                      ...editData,
+                      primaryContact: { ...editData.primaryContact, role: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
+                    placeholder="e.g., Owner, GM, Marketing Director"
+                  />
+                ) : (
+                  <p className="text-slate-600 dark:text-slate-400">{profileHeader.primaryContact.role || 'Not set'}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  <Mail className="inline h-4 w-4 mr-1" />
+                  Email
+                </label>
+                {isEditing ? (
+                  <input
+                    type="email"
+                    value={editData.primaryContact.email}
+                    onChange={(e) => setEditData({
+                      ...editData,
+                      primaryContact: { ...editData.primaryContact, email: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
+                    placeholder="sarah@restaurant.com"
+                  />
+                ) : (
+                  <p className="text-slate-600 dark:text-slate-400">{profileHeader.primaryContact.email || 'Not set'}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  <Phone className="inline h-4 w-4 mr-1" />
+                  Phone
+                </label>
+                {isEditing ? (
+                  <input
+                    type="tel"
+                    value={editData.primaryContact.phone}
+                    onChange={(e) => setEditData({
+                      ...editData,
+                      primaryContact: { ...editData.primaryContact, phone: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
+                    placeholder="(555) 123-4567"
+                  />
+                ) : (
+                  <p className="text-slate-600 dark:text-slate-400">{profileHeader.primaryContact.phone || 'Not set'}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Context */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Priorities & Preferences */}
+        <div className="space-y-4">
+          <h4 className="font-medium text-slate-900 dark:text-slate-100">What's Important to Them</h4>
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Key Priorities
+            </label>
+            {isEditing ? (
+              <div className="space-y-2">
+                {editData.quickContext.priorities.map((priority, index) => (
+                  <div key={index} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={priority}
+                      onChange={(e) => updatePriority(index, e.target.value)}
+                      className="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
+                      placeholder="e.g., Increase weekend sales, Better online reviews"
+                    />
+                    <button
+                      onClick={() => removePriority(index)}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={addPriority}
+                  className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                >
+                  + Add Priority
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {profileHeader.quickContext.priorities.length > 0 ? (
+                  profileHeader.quickContext.priorities.map((priority, index) => (
+                    <span key={index} className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-3 py-1 rounded-full text-sm">
+                      {priority}
+                    </span>
+                  ))
+                ) : (
+                  <p className="text-slate-500 dark:text-slate-400">No priorities set</p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Communication Preferences */}
+        <div className="space-y-4">
+          <h4 className="font-medium text-slate-900 dark:text-slate-100">Communication Style</h4>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Communication Style
+              </label>
+              {isEditing ? (
+                <select
+                  value={editData.quickContext.communicationStyle}
+                  onChange={(e) => setEditData({
+                    ...editData,
+                    quickContext: {
+                      ...editData.quickContext,
+                      communicationStyle: e.target.value as ClientProfileHeader['quickContext']['communicationStyle']
+                    }
+                  })}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
+                >
+                  <option value="formal">Formal</option>
+                  <option value="casual">Casual</option>
+                  <option value="direct">Direct</option>
+                  <option value="relationship-focused">Relationship-focused</option>
+                </select>
+              ) : (
+                <p className="text-slate-600 dark:text-slate-400 capitalize">
+                  {profileHeader.quickContext.communicationStyle.replace('-', ' ')}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Best Contact Method
+              </label>
+              {isEditing ? (
+                <select
+                  value={editData.quickContext.bestContactMethod}
+                  onChange={(e) => setEditData({
+                    ...editData,
+                    quickContext: {
+                      ...editData.quickContext,
+                      bestContactMethod: e.target.value as ClientProfileHeader['quickContext']['bestContactMethod']
+                    }
+                  })}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
+                >
+                  <option value="email">Email</option>
+                  <option value="phone">Phone</option>
+                  <option value="text">Text</option>
+                  <option value="in-person">In-person</option>
+                </select>
+              ) : (
+                <p className="text-slate-600 dark:text-slate-400 capitalize">
+                  {profileHeader.quickContext.bestContactMethod.replace('-', ' ')}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Key Notes */}
+      <div>
+        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+          Key Notes & Context
+        </label>
+        {isEditing ? (
+          <textarea
+            value={editData.quickContext.keyNotes}
+            onChange={(e) => setEditData({
+              ...editData,
+              quickContext: { ...editData.quickContext, keyNotes: e.target.value }
+            })}
+            rows={4}
+            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
+            placeholder="Important context, preferences, things to remember about this client..."
+          />
+        ) : (
+          <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-4">
+            <p className="text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
+              {profileHeader.quickContext.keyNotes || 'No notes added yet'}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Secondary Contacts */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h4 className="font-medium text-slate-900 dark:text-slate-100">Additional Contacts</h4>
+          {isEditing && (
+            <button
+              onClick={addSecondaryContact}
+              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+            >
+              + Add Contact
+            </button>
+          )}
+        </div>
+
+        <div className="space-y-4">
+          {(isEditing ? editData.secondaryContacts : profileHeader.secondaryContacts).map((contact, index) => (
+            <div key={index} className="bg-slate-50 dark:bg-slate-700 rounded-lg p-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
+                    Name
+                  </label>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={contact.name}
+                      onChange={(e) => updateSecondaryContact(index, 'name', e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
+                    />
+                  ) : (
+                    <p className="text-slate-600 dark:text-slate-400">{contact.name}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
+                    Role
+                  </label>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={contact.role}
+                      onChange={(e) => updateSecondaryContact(index, 'role', e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
+                    />
+                  ) : (
+                    <p className="text-slate-600 dark:text-slate-400">{contact.role}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
+                    Email
+                  </label>
+                  {isEditing ? (
+                    <input
+                      type="email"
+                      value={contact.email}
+                      onChange={(e) => updateSecondaryContact(index, 'email', e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
+                    />
+                  ) : (
+                    <p className="text-slate-600 dark:text-slate-400">{contact.email}</p>
+                  )}
+                </div>
+                <div className="flex items-end">
+                  {isEditing ? (
+                    <div className="w-full flex gap-2">
+                      <input
+                        type="tel"
+                        value={contact.phone}
+                        onChange={(e) => updateSecondaryContact(index, 'phone', e.target.value)}
+                        className="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
+                        placeholder="Phone"
+                      />
+                      <button
+                        onClick={() => removeSecondaryContact(index)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-slate-600 dark:text-slate-400">{contact.phone}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+          
+          {!isEditing && profileHeader.secondaryContacts.length === 0 && (
+            <p className="text-slate-500 dark:text-slate-400 text-center py-4">
+              No additional contacts added
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Hidden file input for photo upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handlePhotoUpload}
+        className="hidden"
+      />
+    </motion.div>
+  );
+} 
