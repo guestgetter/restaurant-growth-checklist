@@ -36,8 +36,8 @@ interface ConversationNote {
 
 interface BaselineMetrics {
   monthlyRevenue: string;
-  averageOrderValue: string;
-  customerCount: string;
+  averagePerHeadSpend: string;
+  guestCount: string;
   onlinePresence: {
     googleReviews: string;
     websiteTraffic: string;
@@ -46,6 +46,24 @@ interface BaselineMetrics {
   marketingChannels: string[];
   mainChallenges: string[];
   currentTools: string[];
+  screenshots: {
+    googleBusinessProfile?: {
+      before?: string;
+      after?: string;
+    };
+    website?: {
+      before?: string;
+      after?: string;
+    };
+    analytics?: {
+      before?: string;
+      after?: string;
+    };
+    socialMedia?: {
+      before?: string;
+      after?: string;
+    };
+  };
 }
 
 interface DreamCaseStudy {
@@ -62,41 +80,17 @@ interface DreamCaseStudy {
   }>;
 }
 
-interface ClientContext {
-  businessPriorities: string[];
-  currentChallenges: string[];
-  decisionMakers: Array<{
-    name: string;
-    role: string;
-    contact: string;
-    influence: 'high' | 'medium' | 'low';
-  }>;
-  importantDates: Array<{
-    date: string;
-    event: string;
-    type: 'renewal' | 'review' | 'launch' | 'seasonal' | 'other';
-  }>;
-  competitorInfo: string[];
-  specialNotes: string;
-  communicationPreferences: {
-    frequency: 'weekly' | 'biweekly' | 'monthly';
-    method: 'call' | 'email' | 'meeting' | 'text';
-    bestTimes: string;
-  };
-}
-
 interface ClientProfileData {
   id: string;
   conversations: ConversationNote[];
   baseline: BaselineMetrics;
   dreamCaseStudy: DreamCaseStudy;
-  clientContext: ClientContext;
   lastUpdated: string;
 }
 
 export default function ClientProfileManager({ clientId }: { clientId: string }) {
   const [profile, setProfile] = useState<ClientProfileData | null>(null);
-  const [activeTab, setActiveTab] = useState<'conversations' | 'baseline' | 'dream' | 'context'>('conversations');
+  const [activeTab, setActiveTab] = useState<'conversations' | 'baseline' | 'dream'>('conversations');
   const [isEditing, setIsEditing] = useState(false);
   const [showAddConversation, setShowAddConversation] = useState(false);
 
@@ -143,8 +137,8 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
       conversations: [],
       baseline: {
         monthlyRevenue: '',
-        averageOrderValue: '',
-        customerCount: '',
+        averagePerHeadSpend: '',
+        guestCount: '',
         onlinePresence: {
           googleReviews: '',
           websiteTraffic: '',
@@ -152,7 +146,8 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
         },
         marketingChannels: [],
         mainChallenges: [],
-        currentTools: []
+        currentTools: [],
+        screenshots: {}
       },
       dreamCaseStudy: {
         timeframe: '',
@@ -163,40 +158,18 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
         successMetrics: [],
         milestones: []
       },
-      clientContext: {
-        businessPriorities: [],
-        currentChallenges: [],
-        decisionMakers: [],
-        importantDates: [],
-        competitorInfo: [],
-        specialNotes: '',
-        communicationPreferences: {
-          frequency: 'weekly',
-          method: 'call',
-          bestTimes: ''
-        }
-      },
       lastUpdated: new Date().toISOString()
     };
     setProfile(newProfile);
     saveProfile(newProfile);
   };
 
-  // Helper function to ensure clientContext exists on existing profiles
+  // Helper function to ensure screenshots exists on existing profiles
   const ensureClientContext = (profile: any): ClientProfileData => {
-    if (!profile.clientContext) {
-      profile.clientContext = {
-        businessPriorities: [],
-        currentChallenges: [],
-        decisionMakers: [],
-        importantDates: [],
-        competitorInfo: [],
-        specialNotes: '',
-        communicationPreferences: {
-          frequency: 'weekly',
-          method: 'call',
-          bestTimes: ''
-        }
+    if (!profile.baseline?.screenshots) {
+      profile.baseline = {
+        ...profile.baseline,
+        screenshots: {}
       };
     }
     return profile as ClientProfileData;
@@ -257,10 +230,7 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
     saveProfile({ ...profile, dreamCaseStudy });
   };
 
-  const updateClientContext = (clientContext: ClientContext) => {
-    if (!profile) return;
-    saveProfile({ ...profile, clientContext });
-  };
+
 
   if (!profile) return null;
 
@@ -330,19 +300,6 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
               Dream Case Study
             </div>
           </button>
-          <button
-            onClick={() => setActiveTab('context')}
-            className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'context'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <FileText size={16} />
-              Client Context
-            </div>
-          </button>
         </nav>
       </div>
 
@@ -369,14 +326,6 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
             <DreamCaseStudyTab
               dreamCaseStudy={profile.dreamCaseStudy}
               onUpdate={updateDreamCaseStudy}
-              isEditing={isEditing}
-              setIsEditing={setIsEditing}
-            />
-          )}
-          {activeTab === 'context' && (
-            <ClientContextTab
-              clientContext={profile.clientContext}
-              onUpdate={updateClientContext}
               isEditing={isEditing}
               setIsEditing={setIsEditing}
             />
@@ -725,6 +674,24 @@ function BaselineTab({
     setIsEditing(false);
   };
 
+  const handleScreenshotUpload = (category: string, type: 'before' | 'after', file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const imageData = e.target?.result as string;
+      setEditData({
+        ...editData,
+        screenshots: {
+          ...editData.screenshots,
+          [category]: {
+            ...editData.screenshots[category as keyof typeof editData.screenshots],
+            [type]: imageData
+          }
+        }
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -734,7 +701,7 @@ function BaselineTab({
     >
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-          Starting Baseline Metrics
+          Starting Baseline & Case Study Assets
         </h3>
         {!isEditing ? (
           <button
@@ -764,10 +731,10 @@ function BaselineTab({
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Core Metrics */}
         <div className="space-y-4">
-          <h4 className="font-medium text-slate-900 dark:text-slate-100">Core Business Metrics</h4>
+          <h4 className="font-medium text-slate-900 dark:text-slate-100">Core Restaurant Metrics</h4>
           
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
@@ -788,35 +755,35 @@ function BaselineTab({
 
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Average Order Value
+              Average Per Head Spend
             </label>
             {isEditing ? (
               <input
                 type="text"
-                value={editData.averageOrderValue}
-                onChange={(e) => setEditData({ ...editData, averageOrderValue: e.target.value })}
+                value={editData.averagePerHeadSpend}
+                onChange={(e) => setEditData({ ...editData, averagePerHeadSpend: e.target.value })}
                 className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
                 placeholder="e.g., $28"
               />
             ) : (
-              <p className="text-slate-900 dark:text-slate-100">{baseline.averageOrderValue || 'Not set'}</p>
+              <p className="text-slate-900 dark:text-slate-100">{baseline.averagePerHeadSpend || 'Not set'}</p>
             )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Monthly Customer Count
+              Monthly Guest Count
             </label>
             {isEditing ? (
               <input
                 type="text"
-                value={editData.customerCount}
-                onChange={(e) => setEditData({ ...editData, customerCount: e.target.value })}
+                value={editData.guestCount}
+                onChange={(e) => setEditData({ ...editData, guestCount: e.target.value })}
                 className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
                 placeholder="e.g., 1,600"
               />
             ) : (
-              <p className="text-slate-900 dark:text-slate-100">{baseline.customerCount || 'Not set'}</p>
+              <p className="text-slate-900 dark:text-slate-100">{baseline.guestCount || 'Not set'}</p>
             )}
           </div>
         </div>
@@ -827,7 +794,7 @@ function BaselineTab({
           
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Google Reviews (Count & Rating)
+              Google Reviews
             </label>
             {isEditing ? (
               <input
@@ -838,7 +805,7 @@ function BaselineTab({
                   onlinePresence: { ...editData.onlinePresence, googleReviews: e.target.value }
                 })}
                 className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
-                placeholder="e.g., 127 reviews, 4.2 stars"
+                placeholder="e.g., 4.2 stars (127 reviews)"
               />
             ) : (
               <p className="text-slate-900 dark:text-slate-100">{baseline.onlinePresence.googleReviews || 'Not set'}</p>
@@ -847,7 +814,7 @@ function BaselineTab({
 
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Monthly Website Traffic
+              Website Traffic
             </label>
             {isEditing ? (
               <input
@@ -858,7 +825,7 @@ function BaselineTab({
                   onlinePresence: { ...editData.onlinePresence, websiteTraffic: e.target.value }
                 })}
                 className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
-                placeholder="e.g., 2,500 visitors"
+                placeholder="e.g., 2,500 monthly visitors"
               />
             ) : (
               <p className="text-slate-900 dark:text-slate-100">{baseline.onlinePresence.websiteTraffic || 'Not set'}</p>
@@ -867,7 +834,7 @@ function BaselineTab({
 
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Social Media Following
+              Social Following
             </label>
             {isEditing ? (
               <input
@@ -878,7 +845,7 @@ function BaselineTab({
                   onlinePresence: { ...editData.onlinePresence, socialFollowing: e.target.value }
                 })}
                 className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
-                placeholder="e.g., FB: 850, IG: 1.2k"
+                placeholder="e.g., 850 Instagram, 420 Facebook"
               />
             ) : (
               <p className="text-slate-900 dark:text-slate-100">{baseline.onlinePresence.socialFollowing || 'Not set'}</p>
@@ -887,28 +854,333 @@ function BaselineTab({
         </div>
       </div>
 
-      {/* Additional Context */}
-      <div className="grid grid-cols-1 gap-6">
+      {/* Case Study Screenshots */}
+      <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
+        <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-4">Case Study Screenshots (Before & After)</h4>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          {/* Google Business Profile */}
+          <div className="space-y-3">
+            <h5 className="text-sm font-medium text-slate-700 dark:text-slate-300">Google Business Profile</h5>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-slate-600 dark:text-slate-400 mb-2">Before</label>
+                {isEditing ? (
+                  <div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleScreenshotUpload('googleBusinessProfile', 'before', file);
+                      }}
+                      className="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                    {editData.screenshots?.googleBusinessProfile?.before && (
+                      <img
+                        src={editData.screenshots.googleBusinessProfile.before}
+                        alt="GBP Before"
+                        className="mt-2 w-full h-32 object-cover rounded border"
+                      />
+                    )}
+                  </div>
+                ) : baseline.screenshots?.googleBusinessProfile?.before ? (
+                  <img
+                    src={baseline.screenshots.googleBusinessProfile.before}
+                    alt="GBP Before"
+                    className="w-full h-32 object-cover rounded border"
+                  />
+                ) : (
+                  <div className="w-full h-32 bg-slate-100 dark:bg-slate-700 rounded border flex items-center justify-center text-slate-500">
+                    No screenshot
+                  </div>
+                )}
+              </div>
+              
+              <div>
+                <label className="block text-xs text-slate-600 dark:text-slate-400 mb-2">After</label>
+                {isEditing ? (
+                  <div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleScreenshotUpload('googleBusinessProfile', 'after', file);
+                      }}
+                      className="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                    />
+                    {editData.screenshots?.googleBusinessProfile?.after && (
+                      <img
+                        src={editData.screenshots.googleBusinessProfile.after}
+                        alt="GBP After"
+                        className="mt-2 w-full h-32 object-cover rounded border"
+                      />
+                    )}
+                  </div>
+                ) : baseline.screenshots?.googleBusinessProfile?.after ? (
+                  <img
+                    src={baseline.screenshots.googleBusinessProfile.after}
+                    alt="GBP After"
+                    className="w-full h-32 object-cover rounded border"
+                  />
+                ) : (
+                  <div className="w-full h-32 bg-slate-100 dark:bg-slate-700 rounded border flex items-center justify-center text-slate-500">
+                    No screenshot
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Website */}
+          <div className="space-y-3">
+            <h5 className="text-sm font-medium text-slate-700 dark:text-slate-300">Website</h5>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-slate-600 dark:text-slate-400 mb-2">Before</label>
+                {isEditing ? (
+                  <div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleScreenshotUpload('website', 'before', file);
+                      }}
+                      className="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                    {editData.screenshots?.website?.before && (
+                      <img
+                        src={editData.screenshots.website.before}
+                        alt="Website Before"
+                        className="mt-2 w-full h-32 object-cover rounded border"
+                      />
+                    )}
+                  </div>
+                ) : baseline.screenshots?.website?.before ? (
+                  <img
+                    src={baseline.screenshots.website.before}
+                    alt="Website Before"
+                    className="w-full h-32 object-cover rounded border"
+                  />
+                ) : (
+                  <div className="w-full h-32 bg-slate-100 dark:bg-slate-700 rounded border flex items-center justify-center text-slate-500">
+                    No screenshot
+                  </div>
+                )}
+              </div>
+              
+              <div>
+                <label className="block text-xs text-slate-600 dark:text-slate-400 mb-2">After</label>
+                {isEditing ? (
+                  <div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleScreenshotUpload('website', 'after', file);
+                      }}
+                      className="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                    />
+                    {editData.screenshots?.website?.after && (
+                      <img
+                        src={editData.screenshots.website.after}
+                        alt="Website After"
+                        className="mt-2 w-full h-32 object-cover rounded border"
+                      />
+                    )}
+                  </div>
+                ) : baseline.screenshots?.website?.after ? (
+                  <img
+                    src={baseline.screenshots.website.after}
+                    alt="Website After"
+                    className="w-full h-32 object-cover rounded border"
+                  />
+                ) : (
+                  <div className="w-full h-32 bg-slate-100 dark:bg-slate-700 rounded border flex items-center justify-center text-slate-500">
+                    No screenshot
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Analytics */}
+          <div className="space-y-3">
+            <h5 className="text-sm font-medium text-slate-700 dark:text-slate-300">Analytics Dashboard</h5>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-slate-600 dark:text-slate-400 mb-2">Before</label>
+                {isEditing ? (
+                  <div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleScreenshotUpload('analytics', 'before', file);
+                      }}
+                      className="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                    {editData.screenshots?.analytics?.before && (
+                      <img
+                        src={editData.screenshots.analytics.before}
+                        alt="Analytics Before"
+                        className="mt-2 w-full h-32 object-cover rounded border"
+                      />
+                    )}
+                  </div>
+                ) : baseline.screenshots?.analytics?.before ? (
+                  <img
+                    src={baseline.screenshots.analytics.before}
+                    alt="Analytics Before"
+                    className="w-full h-32 object-cover rounded border"
+                  />
+                ) : (
+                  <div className="w-full h-32 bg-slate-100 dark:bg-slate-700 rounded border flex items-center justify-center text-slate-500">
+                    No screenshot
+                  </div>
+                )}
+              </div>
+              
+              <div>
+                <label className="block text-xs text-slate-600 dark:text-slate-400 mb-2">After</label>
+                {isEditing ? (
+                  <div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleScreenshotUpload('analytics', 'after', file);
+                      }}
+                      className="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                    />
+                    {editData.screenshots?.analytics?.after && (
+                      <img
+                        src={editData.screenshots.analytics.after}
+                        alt="Analytics After"
+                        className="mt-2 w-full h-32 object-cover rounded border"
+                      />
+                    )}
+                  </div>
+                ) : baseline.screenshots?.analytics?.after ? (
+                  <img
+                    src={baseline.screenshots.analytics.after}
+                    alt="Analytics After"
+                    className="w-full h-32 object-cover rounded border"
+                  />
+                ) : (
+                  <div className="w-full h-32 bg-slate-100 dark:bg-slate-700 rounded border flex items-center justify-center text-slate-500">
+                    No screenshot
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Social Media */}
+          <div className="space-y-3">
+            <h5 className="text-sm font-medium text-slate-700 dark:text-slate-300">Social Media</h5>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-slate-600 dark:text-slate-400 mb-2">Before</label>
+                {isEditing ? (
+                  <div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleScreenshotUpload('socialMedia', 'before', file);
+                      }}
+                      className="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                    {editData.screenshots?.socialMedia?.before && (
+                      <img
+                        src={editData.screenshots.socialMedia.before}
+                        alt="Social Media Before"
+                        className="mt-2 w-full h-32 object-cover rounded border"
+                      />
+                    )}
+                  </div>
+                ) : baseline.screenshots?.socialMedia?.before ? (
+                  <img
+                    src={baseline.screenshots.socialMedia.before}
+                    alt="Social Media Before"
+                    className="w-full h-32 object-cover rounded border"
+                  />
+                ) : (
+                  <div className="w-full h-32 bg-slate-100 dark:bg-slate-700 rounded border flex items-center justify-center text-slate-500">
+                    No screenshot
+                  </div>
+                )}
+              </div>
+              
+              <div>
+                <label className="block text-xs text-slate-600 dark:text-slate-400 mb-2">After</label>
+                {isEditing ? (
+                  <div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleScreenshotUpload('socialMedia', 'after', file);
+                      }}
+                      className="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                    />
+                    {editData.screenshots?.socialMedia?.after && (
+                      <img
+                        src={editData.screenshots.socialMedia.after}
+                        alt="Social Media After"
+                        className="mt-2 w-full h-32 object-cover rounded border"
+                      />
+                    )}
+                  </div>
+                ) : baseline.screenshots?.socialMedia?.after ? (
+                  <img
+                    src={baseline.screenshots.socialMedia.after}
+                    alt="Social Media After"
+                    className="w-full h-32 object-cover rounded border"
+                  />
+                ) : (
+                  <div className="w-full h-32 bg-slate-100 dark:bg-slate-700 rounded border flex items-center justify-center text-slate-500">
+                    No screenshot
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Additional Baseline Info */}
+      <div className="border-t border-slate-200 dark:border-slate-700 pt-6 space-y-4">
+        <h4 className="font-medium text-slate-900 dark:text-slate-100">Additional Context</h4>
+        
         <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-            Current Marketing Channels
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            Marketing Channels
           </label>
           {isEditing ? (
             <textarea
               value={editData.marketingChannels.join('\n')}
               onChange={(e) => setEditData({ 
                 ...editData, 
-                marketingChannels: e.target.value.split('\n').filter(item => item.trim())
+                marketingChannels: e.target.value.split('\n').filter(channel => channel.trim())
               })}
-              rows={3}
+              rows={2}
               className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
-              placeholder="One channel per line (e.g., Word of mouth, Google Ads, Social media)"
+              placeholder="One channel per line (e.g., Word of mouth, Yelp, Social media)"
             />
           ) : (
-            <div className="space-y-1">
+            <div className="flex flex-wrap gap-2">
               {baseline.marketingChannels.length > 0 ? (
                 baseline.marketingChannels.map((channel, index) => (
-                  <span key={index} className="inline-block bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-sm mr-2 mb-1">
+                  <span key={index} className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-sm">
                     {channel}
                   </span>
                 ))
@@ -920,7 +1192,7 @@ function BaselineTab({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
             Main Challenges
           </label>
           {isEditing ? (
@@ -928,17 +1200,17 @@ function BaselineTab({
               value={editData.mainChallenges.join('\n')}
               onChange={(e) => setEditData({ 
                 ...editData, 
-                mainChallenges: e.target.value.split('\n').filter(item => item.trim())
+                mainChallenges: e.target.value.split('\n').filter(challenge => challenge.trim())
               })}
-              rows={3}
+              rows={2}
               className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
               placeholder="One challenge per line"
             />
           ) : (
-            <div className="space-y-1">
+            <div className="flex flex-wrap gap-2">
               {baseline.mainChallenges.length > 0 ? (
                 baseline.mainChallenges.map((challenge, index) => (
-                  <span key={index} className="inline-block bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 px-2 py-1 rounded text-sm mr-2 mb-1">
+                  <span key={index} className="bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 px-2 py-1 rounded text-sm">
                     {challenge}
                   </span>
                 ))
@@ -1135,324 +1407,6 @@ function DreamCaseStudyTab({
         ) : (
           <p className="text-slate-500 dark:text-slate-400">No milestones defined yet</p>
         )}
-      </div>
-    </motion.div>
-  );
-}
-
-// Client Context Tab Component
-function ClientContextTab({ 
-  clientContext, 
-  onUpdate, 
-  isEditing, 
-  setIsEditing 
-}: {
-  clientContext: ClientContext;
-  onUpdate: (clientContext: ClientContext) => void;
-  isEditing: boolean;
-  setIsEditing: (editing: boolean) => void;
-}) {
-  const [editData, setEditData] = useState(clientContext);
-
-  const handleSave = () => {
-    onUpdate(editData);
-    setIsEditing(false);
-  };
-
-  const handleCancel = () => {
-    setEditData(clientContext);
-    setIsEditing(false);
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="space-y-6"
-    >
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-          Client Context
-        </h3>
-        {!isEditing ? (
-          <button
-            onClick={() => setIsEditing(true)}
-            className="flex items-center gap-2 px-4 py-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-          >
-            <Edit3 size={16} />
-            Edit Context
-          </button>
-        ) : (
-          <div className="flex gap-2">
-            <button
-              onClick={handleCancel}
-              className="flex items-center gap-2 px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-            >
-              <X size={16} />
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Save size={16} />
-              Save
-            </button>
-          </div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 gap-6">
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-            Business Priorities
-          </label>
-          {isEditing ? (
-            <textarea
-              value={editData.businessPriorities.join('\n')}
-              onChange={(e) => setEditData({ 
-                ...editData, 
-                businessPriorities: e.target.value.split('\n').filter(item => item.trim())
-              })}
-              rows={3}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
-              placeholder="One priority per line"
-            />
-          ) : (
-            <div className="space-y-1">
-              {clientContext.businessPriorities.length > 0 ? (
-                clientContext.businessPriorities.map((priority, index) => (
-                  <span key={index} className="inline-block bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-sm mr-2 mb-1">
-                    {priority}
-                  </span>
-                ))
-              ) : (
-                <p className="text-slate-500 dark:text-slate-400">No priorities specified</p>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-            Current Challenges
-          </label>
-          {isEditing ? (
-            <textarea
-              value={editData.currentChallenges.join('\n')}
-              onChange={(e) => setEditData({ 
-                ...editData, 
-                currentChallenges: e.target.value.split('\n').filter(item => item.trim())
-              })}
-              rows={3}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
-              placeholder="One challenge per line"
-            />
-          ) : (
-            <div className="space-y-1">
-              {clientContext.currentChallenges.length > 0 ? (
-                clientContext.currentChallenges.map((challenge, index) => (
-                  <span key={index} className="inline-block bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 px-2 py-1 rounded text-sm mr-2 mb-1">
-                    {challenge}
-                  </span>
-                ))
-              ) : (
-                <p className="text-slate-500 dark:text-slate-400">No challenges specified</p>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-            Decision Makers
-          </label>
-          {isEditing ? (
-            <textarea
-              value={editData.decisionMakers.map(maker => `${maker.name} (${maker.role}) - ${maker.contact}`).join('\n')}
-              onChange={(e) => setEditData({ 
-                ...editData, 
-                decisionMakers: e.target.value.split('\n').map(line => {
-                  const [name, role, contact] = line.split(' - ');
-                  return { name, role, contact, influence: 'high' };
-                })
-              })}
-              rows={3}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
-              placeholder="Name - Role - Contact"
-            />
-          ) : (
-            <div className="space-y-1">
-              {clientContext.decisionMakers.length > 0 ? (
-                clientContext.decisionMakers.map((maker, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <span className="text-slate-900 dark:text-slate-100">{maker.name} - {maker.role}</span>
-                    <span className="text-xs text-slate-500 dark:text-slate-400">({maker.contact})</span>
-                  </div>
-                ))
-              ) : (
-                <p className="text-slate-500 dark:text-slate-400">No decision makers specified</p>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-            Important Dates
-          </label>
-          {isEditing ? (
-            <textarea
-              value={editData.importantDates.map(date => `${date.date} - ${date.event} (${date.type})`).join('\n')}
-                             onChange={(e) => setEditData({ 
-                 ...editData, 
-                 importantDates: e.target.value.split('\n').filter(line => line.trim()).map(line => {
-                   const parts = line.split(' - ');
-                   const date = parts[0] || '';
-                   const event = parts[1] || '';
-                   const type = (parts[2] as 'renewal' | 'review' | 'launch' | 'seasonal' | 'other') || 'other';
-                   return { date, event, type };
-                 })
-               })}
-              rows={3}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
-              placeholder="Date - Event - Type"
-            />
-          ) : (
-            <div className="space-y-1">
-              {clientContext.importantDates.length > 0 ? (
-                clientContext.importantDates.map((date, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <span className="text-slate-900 dark:text-slate-100">{date.date}</span>
-                    <span className="text-xs text-slate-500 dark:text-slate-400">({date.event} - {date.type})</span>
-                  </div>
-                ))
-              ) : (
-                <p className="text-slate-500 dark:text-slate-400">No important dates specified</p>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-            Competitor Information
-          </label>
-          {isEditing ? (
-            <textarea
-              value={editData.competitorInfo.join('\n')}
-              onChange={(e) => setEditData({ 
-                ...editData, 
-                competitorInfo: e.target.value.split('\n').filter(item => item.trim())
-              })}
-              rows={3}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
-              placeholder="One competitor per line"
-            />
-          ) : (
-            <div className="space-y-1">
-              {clientContext.competitorInfo.length > 0 ? (
-                clientContext.competitorInfo.map((competitor, index) => (
-                  <span key={index} className="inline-block bg-pink-100 dark:bg-pink-900 text-pink-800 dark:text-pink-200 px-2 py-1 rounded text-sm mr-2 mb-1">
-                    {competitor}
-                  </span>
-                ))
-              ) : (
-                <p className="text-slate-500 dark:text-slate-400">No competitors specified</p>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-            Special Notes
-          </label>
-          {isEditing ? (
-            <textarea
-              value={editData.specialNotes}
-              onChange={(e) => setEditData({ ...editData, specialNotes: e.target.value })}
-              rows={3}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
-              placeholder="Any additional notes or observations..."
-            />
-          ) : (
-            <p className="text-slate-900 dark:text-slate-100">{clientContext.specialNotes || 'No additional notes'}</p>
-          )}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-            Communication Preferences
-          </label>
-                     {isEditing ? (
-             <div className="space-y-3">
-               <div>
-                 <label className="block text-xs text-slate-600 dark:text-slate-400 mb-1">Frequency</label>
-                 <select
-                   value={editData.communicationPreferences.frequency}
-                   onChange={(e) => setEditData({ 
-                     ...editData, 
-                     communicationPreferences: {
-                       ...editData.communicationPreferences,
-                       frequency: e.target.value as 'weekly' | 'biweekly' | 'monthly'
-                     }
-                   })}
-                   className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
-                 >
-                   <option value="weekly">Weekly</option>
-                   <option value="biweekly">Bi-weekly</option>
-                   <option value="monthly">Monthly</option>
-                 </select>
-               </div>
-               <div>
-                 <label className="block text-xs text-slate-600 dark:text-slate-400 mb-1">Preferred Method</label>
-                 <select
-                   value={editData.communicationPreferences.method}
-                   onChange={(e) => setEditData({ 
-                     ...editData, 
-                     communicationPreferences: {
-                       ...editData.communicationPreferences,
-                       method: e.target.value as 'call' | 'email' | 'meeting' | 'text'
-                     }
-                   })}
-                   className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
-                 >
-                   <option value="call">Phone Call</option>
-                   <option value="email">Email</option>
-                   <option value="meeting">Meeting</option>
-                   <option value="text">Text/Message</option>
-                 </select>
-               </div>
-               <div>
-                 <label className="block text-xs text-slate-600 dark:text-slate-400 mb-1">Best Times</label>
-                 <input
-                   type="text"
-                   value={editData.communicationPreferences.bestTimes}
-                   onChange={(e) => setEditData({ 
-                     ...editData, 
-                     communicationPreferences: {
-                       ...editData.communicationPreferences,
-                       bestTimes: e.target.value
-                     }
-                   })}
-                   className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:text-slate-100"
-                   placeholder="e.g., Mornings, Tuesdays 2-4pm"
-                 />
-               </div>
-             </div>
-           ) : (
-             <div className="space-y-1">
-               <div className="text-slate-900 dark:text-slate-100">
-                 <span className="capitalize">{clientContext.communicationPreferences.frequency}</span> via {clientContext.communicationPreferences.method}
-               </div>
-               <div className="text-xs text-slate-500 dark:text-slate-400">
-                 Best times: {clientContext.communicationPreferences.bestTimes || 'No preference specified'}
-               </div>
-             </div>
-           )}
-        </div>
       </div>
     </motion.div>
   );

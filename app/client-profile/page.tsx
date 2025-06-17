@@ -125,10 +125,10 @@ export default function ClientProfilePage() {
   const quickStats = {
     monthlyRevenue: '$24,500',
     revenueChange: '+12.3%',
-    customerCount: 1247,
-    customerChange: '+8.1%',
-    avgOrderValue: '$19.65',
-    aovChange: '+2.4%',
+    guestCount: 1247,
+    guestChange: '+8.1%',
+    avgPerHeadSpend: '$19.65',
+    avgPerHeadChange: '+2.4%',
     googleRating: 4.6,
     ratingChange: '+0.2'
   };
@@ -239,15 +239,15 @@ export default function ClientProfilePage() {
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
                     <Users className="w-4 h-4" />
-                    Customers
+                    Guests
                   </div>
                   <div className="flex items-center gap-1 text-green-600">
                     <TrendingUp className="w-3 h-3" />
-                    <span className="text-xs">{quickStats.customerChange}</span>
+                    <span className="text-xs">{quickStats.guestChange}</span>
                   </div>
                 </div>
                 <div className="font-semibold text-slate-900 dark:text-slate-100">
-                  {quickStats.customerCount.toLocaleString()}
+                  {quickStats.guestCount.toLocaleString()}
                 </div>
               </div>
               
@@ -255,15 +255,15 @@ export default function ClientProfilePage() {
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
                     <DollarSign className="w-4 h-4" />
-                    Avg Order Value
+                    Avg Per Head Spend
                   </div>
                   <div className="flex items-center gap-1 text-green-600">
                     <TrendingUp className="w-3 h-3" />
-                    <span className="text-xs">{quickStats.aovChange}</span>
+                    <span className="text-xs">{quickStats.avgPerHeadChange}</span>
                   </div>
                 </div>
                 <div className="font-semibold text-slate-900 dark:text-slate-100">
-                  {quickStats.avgOrderValue}
+                  {quickStats.avgPerHeadSpend}
                 </div>
               </div>
               
