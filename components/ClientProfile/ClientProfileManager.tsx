@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, ClipboardEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   User, 
@@ -105,6 +105,33 @@ interface ClientProfileData {
   lastUpdated: string;
 }
 
+// Add this helper function near the top of the file, after the interfaces
+const handleClipboardPaste = async (
+  e: ClipboardEvent, 
+  onImagePaste: (file: File) => void
+) => {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (item.type.startsWith('image/')) {
+      const file = item.getAsFile();
+      if (file) {
+        // Create a more descriptive filename
+        const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
+        const fileType = file.type.split('/')[1] || 'png';
+        const renamedFile = new File([file], `screenshot-${timestamp}.${fileType}`, {
+          type: file.type
+        });
+        onImagePaste(renamedFile);
+        e.preventDefault();
+        break;
+      }
+    }
+  }
+};
+
 export default function ClientProfileManager({ clientId }: { clientId: string }) {
   const [profile, setProfile] = useState<ClientProfileData | null>(null);
   const [activeTab, setActiveTab] = useState<'header' | 'conversations' | 'baseline' | 'dream'>('header');
@@ -113,6 +140,18 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
   const [showAddConversation, setShowAddConversation] = useState(false);
   const [showModal, setShowModal] = useState<ScreenshotEntry | null>(null);
   const [viewMode, setViewMode] = useState<'upload' | 'progression'>('upload');
+  const [clipboardHint, setClipboardHint] = useState(false);
+
+  // Show clipboard hint when user copies something
+  useEffect(() => {
+    const handleCopy = () => {
+      setClipboardHint(true);
+      setTimeout(() => setClipboardHint(false), 3000);
+    };
+
+    document.addEventListener('copy', handleCopy);
+    return () => document.removeEventListener('copy', handleCopy);
+  }, []);
 
   useEffect(() => {
     loadClientProfile().catch(console.error);
@@ -492,6 +531,7 @@ export default function ClientProfileManager({ clientId }: { clientId: string })
               setShowModal={setShowModal}
               viewMode={viewMode}
               setViewMode={setViewMode}
+              clipboardHint={clipboardHint}
             />
           )}
           {activeTab === 'dream' && (
@@ -831,7 +871,8 @@ function BaselineTab({
   showModal,
   setShowModal,
   viewMode,
-  setViewMode
+  setViewMode,
+  clipboardHint
 }: {
   baseline: BaselineMetrics;
   onUpdate: (baseline: BaselineMetrics) => void;
@@ -841,6 +882,7 @@ function BaselineTab({
   setShowModal: (screenshot: ScreenshotEntry | null) => void;
   viewMode: 'upload' | 'progression';
   setViewMode: (mode: 'upload' | 'progression') => void;
+  clipboardHint: boolean;
 }) {
   const [editData, setEditData] = useState(baseline);
 
@@ -1000,10 +1042,29 @@ function BaselineTab({
                         </label>
                         
                         {/* Upload Area */}
-                        <label className="block w-full border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                        <label 
+                          className={`block w-full border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-all relative ${
+                            clipboardHint 
+                              ? 'border-green-400 bg-green-50 animate-pulse' 
+                              : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
+                          }`}
+                          onPaste={(e) => handleClipboardPaste(e as any, (file) => handleScreenshotUpload([file] as any, category.key, type as ScreenshotEntry['type']))}
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
+                              // Focus the element to ensure paste event fires
+                              e.currentTarget.focus();
+                            }
+                          }}
+                        >
                           <Upload className="h-6 w-6 text-gray-400 mx-auto mb-2" />
-                          <span className="text-sm text-gray-600">
+                          <span className="text-sm text-gray-600 block">
                             Drop files or click to upload
+                          </span>
+                          <span className={`text-xs block mt-1 transition-colors ${
+                            clipboardHint ? 'text-green-600 font-medium' : 'text-gray-500'
+                          }`}>
+                            {clipboardHint ? '📋 Ready to paste! Press ⌘V / Ctrl+V' : 'Or paste screenshot (⌘V / Ctrl+V)'}
                           </span>
                           <input
                             type="file"
@@ -1619,7 +1680,27 @@ function ClientProfileHeaderTab({
           {/* Profile Photo */}
           <div className="flex-shrink-0">
             <div className="relative">
-              <div className="w-24 h-24 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden border-4 border-white dark:border-slate-800 shadow-lg">
+              <div 
+                className="w-24 h-24 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden border-4 border-white dark:border-slate-800 shadow-lg cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => isEditing && fileInputRef.current?.click()}
+                onPaste={(e) => isEditing && handleClipboardPaste(e as any, (file) => {
+                  const reader = new FileReader();
+                  reader.onload = (e) => {
+                    const result = e.target?.result as string;
+                    setEditData({
+                      ...editData,
+                      profilePhoto: result
+                    });
+                  };
+                  reader.readAsDataURL(file);
+                })}
+                tabIndex={isEditing ? 0 : -1}
+                onKeyDown={(e) => {
+                  if (isEditing && (e.metaKey || e.ctrlKey) && e.key === 'v') {
+                    e.currentTarget.focus();
+                  }
+                }}
+              >
                 {(editData.profilePhoto || profileHeader.profilePhoto) ? (
                   <img
                     src={editData.profilePhoto || profileHeader.profilePhoto}
@@ -1631,11 +1712,20 @@ function ClientProfileHeaderTab({
                     <Users className="h-8 w-8 text-slate-400" />
                   </div>
                 )}
+                {isEditing && (
+                  <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center">
+                    <div className="text-white text-xs opacity-0 hover:opacity-100 transition-opacity text-center">
+                      <Camera className="h-4 w-4 mx-auto mb-1" />
+                      <div>Click or paste</div>
+                    </div>
+                  </div>
+                )}
               </div>
               {isEditing && (
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   className="absolute -bottom-1 -right-1 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors shadow-lg"
+                  title="Upload photo or paste from clipboard"
                 >
                   <Camera className="h-4 w-4" />
                 </button>
