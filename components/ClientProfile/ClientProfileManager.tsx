@@ -1121,13 +1121,11 @@ function BaselineTab({
                           {(Array.isArray(baseline.screenshots) ? baseline.screenshots : [])
                             .filter(s => s.category === category.key && s.type === type)
                             .map(screenshot => (
-                              <div key={screenshot.id} className="group relative">
+                              <div key={screenshot.id} className="group relative bg-gray-100 rounded-lg overflow-hidden">
                                 {/* Large thumbnail preview */}
                                 <div 
-                                  className="w-full aspect-video bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
+                                  className="w-full aspect-video cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all relative"
+                                  onClick={() => {
                                     console.log('Thumbnail clicked, opening modal for:', screenshot.name);
                                     setShowModal(screenshot);
                                   }}
@@ -1137,33 +1135,32 @@ function BaselineTab({
                                     alt={screenshot.name}
                                     className="w-full h-full object-cover"
                                   />
+                                  
+                                  {/* Hover overlay for "click to view" */}
+                                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-200 flex items-center justify-center">
+                                    <div className="bg-white/90 px-3 py-1 rounded text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                      Click to view full size
+                                    </div>
+                                  </div>
                                 </div>
                                 
-                                {/* Screenshot info overlay */}
-                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2 rounded-b-lg">
+                                {/* Bottom overlay with filename and delete */}
+                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
                                   <div className="flex items-center justify-between">
                                     <span className="text-white text-xs truncate flex-1 mr-2">
                                       {screenshot.name}
                                     </span>
                                     <button
                                       onClick={(e) => {
-                                        e.preventDefault();
                                         e.stopPropagation();
-                                        console.log('Overlay delete clicked for:', screenshot.name);
+                                        console.log('Delete button clicked for:', screenshot.name);
                                         handleDeleteScreenshot(screenshot.id);
                                       }}
-                                      className="text-white hover:text-red-300 transition-colors p-1"
+                                      className="text-white hover:text-red-300 transition-colors p-1 flex-shrink-0"
                                       title="Delete screenshot"
                                     >
                                       <Trash2 className="h-3 w-3" />
                                     </button>
-                                  </div>
-                                </div>
-                                
-                                {/* Click to view hint */}
-                                <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                  <div className="bg-white/90 px-2 py-1 rounded text-xs font-medium">
-                                    Click to view full size
                                   </div>
                                 </div>
                               </div>
