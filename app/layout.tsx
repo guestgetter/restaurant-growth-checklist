@@ -1,5 +1,5 @@
 import { getServerSession } from 'next-auth/next'
-import { authOptions } from './api/auth/[...nextauth]/route'
+import { authOptions } from '../lib/auth'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'

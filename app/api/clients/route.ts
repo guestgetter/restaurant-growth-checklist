@@ -1,9 +1,23 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '../../../lib/auth';
 import { DatabaseService } from '../../../lib/db/database-service';
+import { validateClientCreate, checkRateLimit, createErrorResponse } from '../../../lib/validation';
 
 export async function GET(request: Request) {
   try {
-    const clients = await DatabaseService.getClients();
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return createErrorResponse('Authentication required', 401);
+    }
+
+    // Rate limiting
+    const clientIp = request.headers.get('x-forwarded-for') || 'unknown';
+    if (!checkRateLimit(`get-clients-${clientIp}`, 50, 60000)) {
+      return createErrorResponse('Rate limit exceeded', 429);
+    }
+
+    const clients = await DatabaseService.getClients(session.user.id);
     return NextResponse.json(clients);
   } catch (error) {
     console.error('Error fetching clients:', error);
@@ -13,32 +27,52 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return createErrorResponse('Authentication required', 401);
+    }
+
+    // Rate limiting
+    const clientIp = request.headers.get('x-forwarded-for') || 'unknown';
+    if (!checkRateLimit(`create-client-${clientIp}`, 20, 60000)) {
+      return createErrorResponse('Rate limit exceeded', 429);
+    }
+
     console.log('🔄 API: Creating client...');
     
-    const clientData = await request.json();
-    console.log('🔍 API: Received client data:', clientData);
+    let clientData;
+    try {
+      const rawData = await request.json();
+      clientData = validateClientCreate(rawData);
+    } catch (validationError) {
+      console.error('❌ API: Validation failed:', validationError);
+      return createErrorResponse(`Invalid input: ${(validationError as Error).message}`, 400);
+    }
+    
+    console.log('🔍 API: Received validated client data:', clientData);
     
     // Convert UI Client to DatabaseClient format
     const dbClientData = {
-      id: clientData.id, // 🔧 FIX: Include the ID from localStorage
+      id: clientData.id || `client_${Date.now()}`, // Ensure ID is always present
       name: clientData.name,
-      type: 'quick-service' as const,
+      type: clientData.type || 'quick-service',
       industry: clientData.industry,
       logo: clientData.logo,
-      location: { city: '', state: '', country: 'US' },
-      accountManager: '',
-      fulfillmentManager: '',
-      onboardingDate: new Date().toISOString(),
-      currentPhase: 'onboarding' as const,
+      location: clientData.location || { city: '', state: '', country: 'US' },
+      accountManager: clientData.accountManager || '',
+      fulfillmentManager: clientData.fulfillmentManager || '',
+      onboardingDate: clientData.onboardingDate || new Date().toISOString(),
+      currentPhase: clientData.currentPhase || 'onboarding',
       googleAdsCustomerId: clientData.googleAdsCustomerId,
       metaAdsAccountId: clientData.metaAdsAccountId,
-      dreamCaseStudyGoal: '',
-      targetAudience: '',
-      topCompetitors: [],
-      monthlyRevenue: 0,
-      averageOrderValue: 0,
+      dreamCaseStudyGoal: clientData.dreamCaseStudyGoal || '',
+      targetAudience: clientData.targetAudience || '',
+      topCompetitors: clientData.topCompetitors || [],
+      monthlyRevenue: clientData.monthlyRevenue || 0,
+      averageOrderValue: clientData.averageOrderValue || 0,
       branding: clientData.branding,
       contact: clientData.contact,
+      userId: session.user.id,
     };
     
     console.log('🔍 API: Calling DatabaseService.createClient...');
