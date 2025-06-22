@@ -107,6 +107,10 @@ export default function OverviewPage() {
             <p className="text-slate-600 dark:text-slate-400 mt-1">
               Your restaurant growth command center
             </p>
+            {/* Test deployment indicator */}
+            <div className="mt-2 text-sm text-blue-600 dark:text-blue-400">
+              ✅ Deployment Test - v1.0.1
+            </div>
           </div>
           <div className="text-right">
             <div className="text-sm text-slate-500 dark:text-slate-400">Current Client</div>
@@ -312,6 +316,19 @@ export default function OverviewPage() {
               Team collaboration, goal tracking, and advanced automation
             </p>
             <span className="px-3 py-1 bg-white/20 rounded-full text-xs">Roadmap</span>
+          </div>
+        </div>
+
+        <div className="text-center">
+          <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-4">
+            Restaurant Growth OS
+          </h1>
+          <p className="text-lg text-slate-600 dark:text-slate-400 mb-8">
+            Streamline your restaurant growth with our comprehensive checklist and analytics platform.
+          </p>
+          {/* Test deployment indicator */}
+          <div className="mb-4 text-sm text-blue-600 dark:text-blue-400">
+            ✅ Deployment Test - v1.0.1
           </div>
         </div>
       </div>
