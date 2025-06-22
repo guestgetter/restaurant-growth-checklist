@@ -52,8 +52,9 @@ model Client {
   currentPhase      String // 'onboarding' | 'magnet' | 'convert' | 'keep' | 'optimization'
   
   // Integration IDs
-  googleAdsCustomerId String?
-  metaAdsAccountId    String?
+  googleAdsCustomerId      String?
+  metaAdsAccountId         String?
+  googleAnalyticsPropertyId String?
   
   // Business goals and targeting
   dreamCaseStudyGoal String

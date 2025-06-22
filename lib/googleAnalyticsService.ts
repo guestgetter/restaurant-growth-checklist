@@ -6,7 +6,6 @@ interface GoogleAnalyticsConfig {
   client_id: string;
   client_secret: string;
   refresh_token: string;
-  property_id: string;
 }
 
 export interface AnalyticsPropertyData {
@@ -172,14 +171,12 @@ export class GoogleAnalyticsService {
         client_id: process.env.GOOGLE_CLIENT_ID || '',
         client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
         refresh_token: process.env.GOOGLE_REFRESH_TOKEN || '',
-        property_id: process.env.GOOGLE_ANALYTICS_PROPERTY_ID || '',
       };
 
       console.log('Google Analytics config check:', {
         hasClientId: !!config.client_id,
         hasClientSecret: !!config.client_secret,
         hasRefreshToken: !!config.refresh_token,
-        hasPropertyId: !!config.property_id,
         clientIdLength: config.client_id.length,
       });
 
@@ -215,8 +212,7 @@ export class GoogleAnalyticsService {
     return !!(
       config.client_id &&
       config.client_secret &&
-      config.refresh_token &&
-      config.property_id
+      config.refresh_token
     );
   }
 

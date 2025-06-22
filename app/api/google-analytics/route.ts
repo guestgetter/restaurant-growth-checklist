@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleAnalyticsService } from '../../../lib/googleAnalyticsService';
+import { prisma } from '../../../lib/prisma';
 
 // Demo data for when API is not configured
 const generateDemoAnalyticsData = () => {
@@ -250,8 +251,27 @@ export async function GET(request: NextRequest) {
       endDate: endDate.toISOString().split('T')[0],
     };
 
-    // Use provided property ID or default
-    const analyticsPropertyId = propertyId || process.env.GOOGLE_ANALYTICS_PROPERTY_ID;
+    // Get Analytics Property ID - either from query param or client database
+    let analyticsPropertyId = propertyId;
+    
+    if (!analyticsPropertyId && clientId !== 'demo') {
+      try {
+        // Fetch client data to get Google Analytics Property ID
+        const client = await prisma.client.findUnique({
+          where: { id: clientId },
+          select: { googleAnalyticsPropertyId: true, name: true }
+        });
+        
+        if (client?.googleAnalyticsPropertyId) {
+          analyticsPropertyId = client.googleAnalyticsPropertyId;
+          console.log(`Using Analytics Property ID ${analyticsPropertyId} for client: ${client.name}`);
+        } else {
+          console.log(`No Analytics Property ID configured for client: ${client?.name || clientId}`);
+        }
+      } catch (dbError) {
+        console.error('Error fetching client Analytics Property ID:', dbError);
+      }
+    }
 
     if (!analyticsPropertyId) {
       console.log('No Analytics property ID configured, returning demo data');

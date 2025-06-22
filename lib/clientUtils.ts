@@ -55,6 +55,7 @@ export const TOBOGGAN_CLIENT: Client = {
   },
   googleAdsCustomerId: '8396280050', // Toboggan's customer ID (will fallback to demo if no access)
   metaAdsAccountId: '',
+  googleAnalyticsPropertyId: '472531528', // Morrissey House GA Property ID for testing
   status: 'active',
   createdAt: new Date().toISOString(),
 };

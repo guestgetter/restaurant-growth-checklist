@@ -33,6 +33,7 @@ export interface Client {
   };
   googleAdsCustomerId?: string;
   metaAdsAccountId?: string;
+  googleAnalyticsPropertyId?: string;
   status: 'active' | 'inactive';
   createdAt: string;
 }
@@ -163,6 +164,7 @@ export default function ClientManagement() {
       contact: editingClient.contact || defaultClient.contact,
       googleAdsCustomerId: editingClient.googleAdsCustomerId,
       metaAdsAccountId: editingClient.metaAdsAccountId,
+      googleAnalyticsPropertyId: editingClient.googleAnalyticsPropertyId,
       status: editingClient.status || 'active',
       createdAt: isAddingNew ? new Date().toISOString() : editingClient.createdAt!,
     };
@@ -696,6 +698,24 @@ export default function ClientManagement() {
                       />
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                         Find this 10-digit ID in the top right corner of Meta Ads (format: 123-456-7890)
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                        Google Analytics Property ID
+                      </label>
+                      <input
+                        type="text"
+                        value={editingClient.googleAnalyticsPropertyId || ''}
+                        onChange={(e) => setEditingClient({
+                          ...editingClient,
+                          googleAnalyticsPropertyId: e.target.value
+                        })}
+                        className="w-full p-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
+                        placeholder="123456789"
+                      />
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        Find this in Google Analytics → Admin → Property Settings (format: 123456789)
                       </p>
                     </div>
                     <div>
