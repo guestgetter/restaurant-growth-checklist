@@ -216,6 +216,85 @@ interface GoogleSearchConsoleData {
   insights: RestaurantSearchInsights;
 }
 
+interface GoogleBusinessProfileData {
+  demo: boolean;
+  location: {
+    name: string;
+    locationId: string;
+    address: string;
+    category: string;
+    phoneNumber?: string;
+    website?: string;
+    verified: boolean;
+  };
+  metrics: {
+    totalViews: number;
+    searchViews: number;
+    mapsViews: number;
+    mobileViews: number;
+    desktopViews: number;
+    websiteClicks: number;
+    phoneClicks: number;
+    directionRequests: number;
+    totalSearches: number;
+    directSearches: number;
+    discoverySearches: number;
+    brandedSearches: number;
+    totalReviews: number;
+    averageRating: number;
+    newReviews: number;
+    menuViews?: number;
+    reservationClicks?: number;
+    orderClicks?: number;
+    photosViewed?: number;
+    date: string;
+    period: string;
+  };
+  searchKeywords: Array<{
+    keyword: string;
+    impressions: number;
+    category: string;
+    trend: string;
+  }>;
+  reviews?: {
+    recentReviews: Array<{
+      id: string;
+      author: string;
+      rating: number;
+      text: string;
+      date: string;
+      response: string | null;
+    }>;
+    reviewSummary: {
+      totalReviews: number;
+      averageRating: number;
+      ratingDistribution: Record<number, number>;
+      responseRate: number;
+      averageResponseTime: string;
+    };
+  };
+  competitorComparison?: {
+    averageViews: number;
+    averageRating: number;
+    industryBenchmark: string;
+    marketPosition?: string;
+    localRanking?: number;
+  };
+  insights?: {
+    peakHours: Array<{ hour: string; day: string; views: number }>;
+    topPhotos: Array<{ type: string; views: number; engagement: string }>;
+    seasonalTrends: {
+      currentMonth: string;
+      monthlyGrowth: string;
+      yearOverYear: string;
+      peakSeason: string;
+    };
+  };
+  recommendations: string[];
+  lastUpdated: string;
+  demoMode?: boolean;
+}
+
 // Utility functions
 const formatCost = (costMicros: number, currencyCode: string = 'USD'): string => {
   const cost = costMicros / 1000000;
@@ -323,7 +402,7 @@ const getDateRangeStart = (dateRange: string): string => {
 
 export default function ReportsPage() {
   const [currentClient, setCurrentClient] = useState<Client | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'campaigns' | 'keywords' | 'meta' | 'analytics' | 'search-console' | 'actions' | 'trends'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'campaigns' | 'keywords' | 'meta' | 'analytics' | 'search-console' | 'business-profile' | 'actions' | 'trends'>('overview');
   const [dateRange, setDateRange] = useState<'today' | '7d' | '14d' | '30d' | '90d' | 'this_month' | 'last_month' | 'this_quarter' | 'last_quarter' | 'this_year' | 'custom'>('30d');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -331,6 +410,7 @@ export default function ReportsPage() {
   const [metaData, setMetaData] = useState<MetaAdsData | null>(null);
   const [analyticsData, setAnalyticsData] = useState<GoogleAnalyticsData | null>(null);
   const [searchConsoleData, setSearchConsoleData] = useState<GoogleSearchConsoleData | null>(null);
+  const [businessProfileData, setBusinessProfileData] = useState<GoogleBusinessProfileData | null>(null);
 
   // Load current client
   useEffect(() => {
@@ -379,6 +459,7 @@ export default function ReportsPage() {
       fetchMetaAdsData();
       fetchAnalyticsData();
       fetchSearchConsoleData();
+      fetchBusinessProfileData();
     }
   }, [currentClient, dateRange]);
 
@@ -471,6 +552,25 @@ export default function ReportsPage() {
     } catch (error) {
       console.error('Error fetching Google Search Console data:', error);
       console.log('Google Search Console data fetch failed, using demo data');
+    }
+  };
+
+  const fetchBusinessProfileData = async () => {
+    if (!currentClient) return;
+
+    try {
+      const response = await fetch(`/api/google-business-profile?clientId=${currentClient.id}&dateRange=${dateRange}&includeHistorical=true`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result: GoogleBusinessProfileData = await response.json();
+      setBusinessProfileData(result);
+      
+    } catch (error) {
+      console.error('Error fetching Google Business Profile data:', error);
+      console.log('Google Business Profile data fetch failed, using demo data');
     }
   };
 
@@ -580,6 +680,7 @@ export default function ReportsPage() {
     { id: 'meta', name: 'Meta', icon: MapPin },
     { id: 'analytics', name: 'Analytics', icon: Users },
     { id: 'search-console', name: 'Search', icon: Eye },
+    { id: 'business-profile', name: 'Business', icon: MapPin },
     { id: 'actions', name: 'Actions', icon: MousePointer },
     { id: 'trends', name: 'Trends', icon: TrendingUp },
   ];
@@ -687,6 +788,10 @@ export default function ReportsPage() {
         
         {activeTab === 'search-console' && (
           <SearchConsoleTab searchConsoleData={searchConsoleData} />
+        )}
+        
+        {activeTab === 'business-profile' && (
+          <BusinessProfileTab businessProfileData={businessProfileData} />
         )}
         
         {activeTab === 'actions' && (
@@ -1693,3 +1798,311 @@ function SearchConsoleTab({ searchConsoleData }: { searchConsoleData: GoogleSear
     </div>
   );
 } 
+
+// Google Business Profile Tab Component
+function BusinessProfileTab({ businessProfileData }: { businessProfileData: GoogleBusinessProfileData | null }) {
+  if (!businessProfileData) {
+    return (
+      <div className="text-center py-12">
+        <MapPin size={48} className="mx-auto text-slate-400 mb-4" />
+        <p className="text-slate-600 dark:text-slate-400">No Google Business Profile data available</p>
+      </div>
+    );
+  }
+
+  const { location, metrics, searchKeywords, reviews, competitorComparison, insights, recommendations, demo } = businessProfileData;
+
+  return (
+    <div className="space-y-6">
+      {demo && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+          <p className="text-amber-800 dark:text-amber-200 text-sm">
+            🏪 <strong>Demo Mode:</strong> This is sample Google Business Profile data. Connect your Business Profile to see real data with 18 months of history.
+          </p>
+        </div>
+      )}
+
+      {/* Location Overview */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{location.name}</h3>
+            <p className="text-slate-600 dark:text-slate-400">{location.address}</p>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">{location.category}</span>
+              {location.verified && (
+                <span className="text-sm bg-green-100 text-green-800 px-2 py-1 rounded flex items-center gap-1">
+                  ✓ Verified
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="flex items-center gap-1 text-yellow-500">
+              {[...Array(5)].map((_, i) => (
+                <span key={i} className={i < Math.floor(metrics.averageRating) ? "★" : "☆"}>
+                  ★
+                </span>
+              ))}
+            </div>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              {metrics.averageRating.toFixed(1)} ({formatNumber(metrics.totalReviews)} reviews)
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Key Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="text-slate-500 dark:text-slate-400">
+              <Eye size={24} />
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+                {formatNumber(metrics.totalViews)}
+              </div>
+              <div className="text-sm text-slate-600 dark:text-slate-400">
+                Total Views
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="text-slate-500 dark:text-slate-400">
+              <MousePointer size={24} />
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+                {formatNumber(metrics.websiteClicks)}
+              </div>
+              <div className="text-sm text-slate-600 dark:text-slate-400">
+                Website Clicks
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="text-slate-500 dark:text-slate-400">
+              <Target size={24} />
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+                {formatNumber(metrics.phoneClicks)}
+              </div>
+              <div className="text-sm text-slate-600 dark:text-slate-400">
+                Phone Calls
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="text-slate-500 dark:text-slate-400">
+              <MapPin size={24} />
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+                {formatNumber(metrics.directionRequests)}
+              </div>
+              <div className="text-sm text-slate-600 dark:text-slate-400">
+                Direction Requests
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Views Breakdown */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Views by Source</h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                <span className="font-medium text-slate-900 dark:text-slate-100">Search Views</span>
+              </div>
+              <span className="font-semibold text-slate-900 dark:text-slate-100">
+                {formatNumber(metrics.searchViews)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                <span className="font-medium text-slate-900 dark:text-slate-100">Maps Views</span>
+              </div>
+              <span className="font-semibold text-slate-900 dark:text-slate-100">
+                {formatNumber(metrics.mapsViews)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Device Breakdown</h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                <span className="font-medium text-slate-900 dark:text-slate-100">Mobile Views</span>
+              </div>
+              <span className="font-semibold text-slate-900 dark:text-slate-100">
+                {formatNumber(metrics.mobileViews)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                <span className="font-medium text-slate-900 dark:text-slate-100">Desktop Views</span>
+              </div>
+              <span className="font-semibold text-slate-900 dark:text-slate-100">
+                {formatNumber(metrics.desktopViews)}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Search Keywords */}
+      {searchKeywords && searchKeywords.length > 0 && (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Top Search Keywords</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {searchKeywords.slice(0, 8).map((keyword, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-slate-900 dark:text-slate-100 truncate">{keyword.keyword}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{keyword.category}</p>
+                </div>
+                <div className="text-right ml-4">
+                  <p className="font-semibold text-slate-900 dark:text-slate-100">{formatNumber(keyword.impressions)}</p>
+                  <p className={`text-sm ${keyword.trend === 'up' ? 'text-green-600' : keyword.trend === 'down' ? 'text-red-600' : 'text-slate-600'}`}>
+                    {keyword.trend === 'up' ? '↗' : keyword.trend === 'down' ? '↘' : '→'} {keyword.trend}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Reviews Section */}
+      {reviews && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Review Summary</h3>
+            <div className="space-y-4">
+              <div className="text-center">
+                <div className="text-4xl font-bold text-yellow-600 dark:text-yellow-400">
+                  {reviews.reviewSummary.averageRating.toFixed(1)}
+                </div>
+                <div className="flex items-center justify-center gap-1 text-yellow-500 mt-2">
+                  {[...Array(5)].map((_, i) => (
+                    <span key={i} className={i < Math.floor(reviews.reviewSummary.averageRating) ? "★" : "☆"}>
+                      ★
+                    </span>
+                  ))}
+                </div>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                  {formatNumber(reviews.reviewSummary.totalReviews)} total reviews
+                </p>
+              </div>
+              <div className="space-y-2">
+                {Object.entries(reviews.reviewSummary.ratingDistribution).reverse().map(([rating, count]) => (
+                  <div key={rating} className="flex items-center gap-2">
+                    <span className="text-sm w-8">{rating}★</span>
+                    <div className="flex-1 bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                      <div 
+                        className="bg-yellow-500 h-2 rounded-full" 
+                        style={{ width: `${(count / reviews.reviewSummary.totalReviews) * 100}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-sm text-slate-600 dark:text-slate-400 w-8">{count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Recent Reviews</h3>
+              <div className="space-y-4">
+                {reviews.recentReviews.slice(0, 3).map((review, index) => (
+                  <div key={review.id} className="border-b border-slate-200 dark:border-slate-700 pb-4 last:border-b-0">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-1 text-yellow-500">
+                        {[...Array(5)].map((_, i) => (
+                          <span key={i} className={i < review.rating ? "★" : "☆"}>
+                            ★
+                          </span>
+                        ))}
+                      </div>
+                      <span className="text-sm text-slate-600 dark:text-slate-400">
+                        {new Date(review.date).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-800 dark:text-slate-200 mb-2">{review.text}</p>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">- {review.author}</p>
+                    {review.response && (
+                      <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-sm">
+                        <p className="text-blue-800 dark:text-blue-200">{review.response}</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Restaurant Actions</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {metrics.menuViews && (
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">{formatNumber(metrics.menuViews)}</div>
+                  <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">Menu Views</div>
+                </div>
+              )}
+              {metrics.reservationClicks && (
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-green-600 dark:text-green-400">{formatNumber(metrics.reservationClicks)}</div>
+                  <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">Reservation Clicks</div>
+                </div>
+              )}
+              {metrics.orderClicks && (
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">{formatNumber(metrics.orderClicks)}</div>
+                  <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">Order Clicks</div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Recommendations */}
+          {recommendations && recommendations.length > 0 && (
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-700 rounded-2xl p-6 shadow-lg border border-blue-100 dark:border-slate-600">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+                  <span className="text-white text-sm font-bold">AI</span>
+                </div>
+                <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+                  Business Profile Optimization Tips
+                </h3>
+              </div>
+              <div className="space-y-3">
+                {recommendations.map((rec, index) => (
+                  <div key={index} className="bg-white/50 dark:bg-slate-800/50 rounded-lg p-3">
+                    <p className="text-slate-600 dark:text-slate-300 text-sm">{rec}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
