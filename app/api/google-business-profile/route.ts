@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import GoogleBusinessProfileService from '../../../lib/googleBusinessProfileService';
 
 // Demo data for Google Business Profile
 const DEMO_BUSINESS_PROFILE_DATA = {
@@ -194,8 +195,152 @@ export async function GET(request: NextRequest) {
     const clientId = searchParams.get('clientId') || 'toboggan-brewing';
     const dateRange = searchParams.get('dateRange') || '30d';
     const includeHistorical = searchParams.get('includeHistorical') === 'true';
+    const accessToken = searchParams.get('accessToken');
+    const refreshToken = searchParams.get('refreshToken');
 
-    console.log('Google Business Profile API not configured, returning demo data');
+    // Check if we have real API credentials
+    const hasCredentials = process.env.GOOGLE_BUSINESS_PROFILE_CLIENT_ID && 
+                          process.env.GOOGLE_BUSINESS_PROFILE_CLIENT_SECRET;
+
+    if (hasCredentials && accessToken) {
+      try {
+        console.log('Using real Google Business Profile API');
+        
+        const service = new GoogleBusinessProfileService();
+        service.setCredentials(accessToken, refreshToken || undefined);
+        
+        // Get accounts and locations
+        const accounts = await service.getAccounts();
+        if (accounts.length === 0) {
+          throw new Error('No business accounts found');
+        }
+        
+        const locations = await service.getLocations(accounts[0].name);
+        if (locations.length === 0) {
+          throw new Error('No locations found');
+        }
+        
+        const location = locations[0];
+        
+        // Calculate date range
+        const endDate = new Date();
+        const startDate = new Date();
+        
+        switch (dateRange) {
+          case '7d':
+            startDate.setDate(endDate.getDate() - 7);
+            break;
+          case '30d':
+            startDate.setDate(endDate.getDate() - 30);
+            break;
+          case '90d':
+            startDate.setDate(endDate.getDate() - 90);
+            break;
+          case 'this_quarter':
+            const quarterStart = new Date(endDate.getFullYear(), Math.floor(endDate.getMonth() / 3) * 3, 1);
+            startDate.setTime(quarterStart.getTime());
+            break;
+          default:
+            startDate.setDate(endDate.getDate() - 30);
+        }
+        
+        // Get metrics
+        const metrics = await service.getDailyMetrics(location.name, startDate, endDate);
+        const processedMetrics = service.processRestaurantMetrics(metrics);
+        
+        // Get reviews
+        const reviews = await service.getReviews(location.name);
+        
+        // Get search keywords for current month
+        const currentMonth = { year: endDate.getFullYear(), month: endDate.getMonth() + 1 };
+        const searchKeywords = await service.getSearchKeywordImpressions(location.name, currentMonth);
+        
+        // Calculate rating distribution
+        const calculateRatingDistribution = (reviewList: any[]) => {
+          const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+          reviewList.forEach(review => {
+            const rating = Math.floor(review.starRating);
+            if (rating >= 1 && rating <= 5) {
+              distribution[rating as keyof typeof distribution]++;
+            }
+          });
+          return distribution;
+        };
+        
+        // Format real data response
+        const realData: any = {
+          demo: false,
+          location: {
+            name: location.locationName,
+            locationId: location.name,
+            address: location.address.addressLines.join(', '),
+            category: location.primaryCategory?.displayName || 'Restaurant',
+            phoneNumber: location.primaryPhone,
+            website: location.websiteUri,
+            verified: true
+          },
+          metrics: processedMetrics.summary,
+          searchKeywords: searchKeywords.slice(0, 10).map(kw => ({
+            keyword: kw.searchKeyword,
+            impressions: kw.impressionsCount,
+            trend: 'stable' // Would need historical data to calculate trend
+          })),
+          reviews: {
+            totalReviews: reviews.length,
+            averageRating: reviews.length > 0 ? 
+              reviews.reduce((sum, r) => sum + r.starRating, 0) / reviews.length : 0,
+            newReviews: reviews.filter(r => {
+              const reviewDate = new Date(r.createTime);
+              return reviewDate >= startDate;
+            }).length,
+            reviewSummary: {
+              totalReviews: reviews.length,
+              ratingDistribution: calculateRatingDistribution(reviews)
+            },
+            recentReviews: reviews.slice(0, 5).map(r => ({
+              rating: r.starRating,
+              comment: r.comment?.substring(0, 150) + '...',
+              date: r.createTime,
+              replied: !!r.reviewReply
+            }))
+          },
+          insights: {
+            peakDays: processedMetrics.restaurantInsights.peakDays,
+            searchVsMaps: processedMetrics.restaurantInsights.searchVsMaps,
+            customerActions: processedMetrics.restaurantInsights.customerActions
+          },
+          recommendations: [
+            'Respond to recent reviews to improve customer engagement',
+            'Add more photos during peak dining hours',
+            'Update business hours for holiday seasons',
+            'Encourage customers to leave reviews after dining'
+          ]
+        };
+        
+        if (includeHistorical) {
+          // Get 18 months of historical data
+          const historicalStart = new Date();
+          historicalStart.setMonth(historicalStart.getMonth() - 18);
+          
+          const historicalMetrics = await service.getDailyMetrics(
+            location.name, 
+            historicalStart, 
+            endDate
+          );
+          
+          realData.historicalData = service.processRestaurantMetrics(historicalMetrics);
+        }
+        
+        return NextResponse.json(realData);
+        
+      } catch (apiError) {
+        console.error('Google Business Profile API error:', apiError);
+        console.log('Falling back to demo data due to API error');
+        // Fall through to demo data
+      }
+    } else {
+      console.log('Google Business Profile API not configured, returning demo data');
+    }
 
     // Get data adjusted for date range
     const businessProfileData = getDateRangeData(dateRange);
