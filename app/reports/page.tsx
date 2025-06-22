@@ -35,6 +35,8 @@ import {
   Cell
 } from 'recharts';
 import { Client } from '../../components/Settings/ClientManagement';
+import { RestaurantAnalyticsInsights } from '../../lib/googleAnalyticsService';
+import { RestaurantSearchInsights } from '../../lib/googleSearchConsoleService';
 
 // Types for API responses
 interface CampaignPerformance {
@@ -204,6 +206,16 @@ interface GoogleAdsData {
   insights: RestaurantInsights;
 }
 
+interface GoogleAnalyticsData {
+  demo: boolean;
+  insights: RestaurantAnalyticsInsights;
+}
+
+interface GoogleSearchConsoleData {
+  demo: boolean;
+  insights: RestaurantSearchInsights;
+}
+
 // Utility functions
 const formatCost = (costMicros: number, currencyCode: string = 'USD'): string => {
   const cost = costMicros / 1000000;
@@ -311,12 +323,14 @@ const getDateRangeStart = (dateRange: string): string => {
 
 export default function ReportsPage() {
   const [currentClient, setCurrentClient] = useState<Client | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'campaigns' | 'keywords' | 'meta' | 'actions' | 'trends'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'campaigns' | 'keywords' | 'meta' | 'analytics' | 'search-console' | 'actions' | 'trends'>('overview');
   const [dateRange, setDateRange] = useState<'today' | '7d' | '14d' | '30d' | '90d' | 'this_month' | 'last_month' | 'this_quarter' | 'last_quarter' | 'this_year' | 'custom'>('30d');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<GoogleAdsData | null>(null);
   const [metaData, setMetaData] = useState<MetaAdsData | null>(null);
+  const [analyticsData, setAnalyticsData] = useState<GoogleAnalyticsData | null>(null);
+  const [searchConsoleData, setSearchConsoleData] = useState<GoogleSearchConsoleData | null>(null);
 
   // Load current client
   useEffect(() => {
@@ -363,6 +377,8 @@ export default function ReportsPage() {
     if (currentClient) {
       fetchGoogleAdsData();
       fetchMetaAdsData();
+      fetchAnalyticsData();
+      fetchSearchConsoleData();
     }
   }, [currentClient, dateRange]);
 
@@ -417,6 +433,44 @@ export default function ReportsPage() {
       console.error('Error fetching Meta Ads data:', error);
       // Don't set error state here since Google Ads might still work
       console.log('Meta Ads data fetch failed, using demo data');
+    }
+  };
+
+  const fetchAnalyticsData = async () => {
+    if (!currentClient) return;
+
+    try {
+      const response = await fetch(`/api/google-analytics?clientId=${currentClient.id}&dateRange=${dateRange}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result: GoogleAnalyticsData = await response.json();
+      setAnalyticsData(result);
+      
+    } catch (error) {
+      console.error('Error fetching Google Analytics data:', error);
+      console.log('Google Analytics data fetch failed, using demo data');
+    }
+  };
+
+  const fetchSearchConsoleData = async () => {
+    if (!currentClient) return;
+
+    try {
+      const response = await fetch(`/api/google-search-console?clientId=${currentClient.id}&dateRange=${dateRange}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result: GoogleSearchConsoleData = await response.json();
+      setSearchConsoleData(result);
+      
+    } catch (error) {
+      console.error('Error fetching Google Search Console data:', error);
+      console.log('Google Search Console data fetch failed, using demo data');
     }
   };
 
@@ -524,6 +578,8 @@ export default function ReportsPage() {
     { id: 'campaigns', name: 'Campaigns', icon: Target },
     { id: 'keywords', name: 'Keywords', icon: Search },
     { id: 'meta', name: 'Meta', icon: MapPin },
+    { id: 'analytics', name: 'Analytics', icon: Users },
+    { id: 'search-console', name: 'Search', icon: Eye },
     { id: 'actions', name: 'Actions', icon: MousePointer },
     { id: 'trends', name: 'Trends', icon: TrendingUp },
   ];
@@ -623,6 +679,14 @@ export default function ReportsPage() {
         
         {activeTab === 'meta' && (
           <MetaTab metaData={metaData} />
+        )}
+        
+        {activeTab === 'analytics' && (
+          <AnalyticsTab analyticsData={analyticsData} />
+        )}
+        
+        {activeTab === 'search-console' && (
+          <SearchConsoleTab searchConsoleData={searchConsoleData} />
         )}
         
         {activeTab === 'actions' && (
@@ -1325,6 +1389,304 @@ function MetricCard({ title, value, icon }: MetricCardProps) {
           </div>
           <div className="text-sm text-slate-600 dark:text-slate-400">
             {title}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Analytics Tab Component
+function AnalyticsTab({ analyticsData }: { analyticsData: GoogleAnalyticsData | null }) {
+  if (!analyticsData) {
+    return (
+      <div className="text-center py-12">
+        <Users size={48} className="mx-auto text-slate-400 mb-4" />
+        <p className="text-slate-600 dark:text-slate-400">No Google Analytics data available</p>
+      </div>
+    );
+  }
+
+  const { insights, demo } = analyticsData;
+
+  return (
+    <div className="space-y-6">
+      {demo && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+          <p className="text-amber-800 dark:text-amber-200 text-sm">
+            📊 <strong>Demo Mode:</strong> This is sample Google Analytics data. Connect your Analytics account to see real data.
+          </p>
+        </div>
+      )}
+
+      {/* Key Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="text-slate-500 dark:text-slate-400">
+              <Users size={24} />
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+                {formatNumber(insights.totalSessions)}
+              </div>
+              <div className="text-sm text-slate-600 dark:text-slate-400">
+                Total Sessions
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="text-slate-500 dark:text-slate-400">
+              <Eye size={24} />
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+                {formatNumber(insights.totalUsers)}
+              </div>
+              <div className="text-sm text-slate-600 dark:text-slate-400">
+                Total Users
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="text-slate-500 dark:text-slate-400">
+              <Target size={24} />
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+                {formatPercentage(insights.conversionRate)}
+              </div>
+              <div className="text-sm text-slate-600 dark:text-slate-400">
+                Conversion Rate
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="text-slate-500 dark:text-slate-400">
+              <DollarSign size={24} />
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+                ${insights.totalRevenue.toFixed(2)}
+              </div>
+              <div className="text-sm text-slate-600 dark:text-slate-400">
+                Total Revenue
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Traffic Sources */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Top Traffic Sources</h3>
+          <div className="space-y-4">
+            {insights.topTrafficSources.slice(0, 5).map((source, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+                <div>
+                  <p className="font-medium text-slate-900 dark:text-slate-100">{source.source}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{source.medium}</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-semibold text-slate-900 dark:text-slate-100">{formatNumber(source.sessions)}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{formatPercentage(source.conversionRate)} CVR</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Top Performing Pages</h3>
+          <div className="space-y-4">
+            {insights.topPerformingPages.slice(0, 5).map((page, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-slate-900 dark:text-slate-100 truncate">{page.pageTitle}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 truncate">{page.pagePath}</p>
+                </div>
+                <div className="text-right ml-4">
+                  <p className="font-semibold text-slate-900 dark:text-slate-100">{formatNumber(page.pageViews)}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{formatPercentage(page.bounceRate)} bounce</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Restaurant-Specific Insights */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg">
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Restaurant Performance Insights</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="text-center">
+            <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">{formatNumber(insights.menuPageViews)}</div>
+            <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">Menu Page Views</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl font-bold text-green-600 dark:text-green-400">{formatNumber(insights.locationPageViews)}</div>
+            <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">Location Page Views</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">{formatNumber(insights.reservationConversions)}</div>
+            <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">Reservation Conversions</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Search Console Tab Component
+function SearchConsoleTab({ searchConsoleData }: { searchConsoleData: GoogleSearchConsoleData | null }) {
+  if (!searchConsoleData) {
+    return (
+      <div className="text-center py-12">
+        <Search size={48} className="mx-auto text-slate-400 mb-4" />
+        <p className="text-slate-600 dark:text-slate-400">No Google Search Console data available</p>
+      </div>
+    );
+  }
+
+  const { insights, demo } = searchConsoleData;
+
+  return (
+    <div className="space-y-6">
+      {demo && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+          <p className="text-amber-800 dark:text-amber-200 text-sm">
+            🔍 <strong>Demo Mode:</strong> This is sample Google Search Console data. Connect your Search Console account to see real data.
+          </p>
+        </div>
+      )}
+
+      {/* Key Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="text-slate-500 dark:text-slate-400">
+              <Eye size={24} />
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+                {formatNumber(insights.totalImpressions)}
+              </div>
+              <div className="text-sm text-slate-600 dark:text-slate-400">
+                Total Impressions
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="text-slate-500 dark:text-slate-400">
+              <MousePointer size={24} />
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+                {formatNumber(insights.totalClicks)}
+              </div>
+              <div className="text-sm text-slate-600 dark:text-slate-400">
+                Total Clicks
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="text-slate-500 dark:text-slate-400">
+              <Target size={24} />
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+                {formatPercentage(insights.averageCTR)}
+              </div>
+              <div className="text-sm text-slate-600 dark:text-slate-400">
+                Average CTR
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="text-slate-500 dark:text-slate-400">
+              <TrendingUp size={24} />
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+                {insights.averagePosition.toFixed(1)}
+              </div>
+              <div className="text-sm text-slate-600 dark:text-slate-400">
+                Average Position
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Search Queries by Category */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Restaurant Name Queries</h3>
+          <div className="space-y-3">
+            {insights.restaurantNameQueries.slice(0, 5).map((query, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-slate-900 dark:text-slate-100 truncate">{query.query}</p>
+                </div>
+                <div className="text-right ml-4">
+                  <p className="font-semibold text-slate-900 dark:text-slate-100">{formatNumber(query.clicks)}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Pos. {query.position.toFixed(1)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Location Queries</h3>
+          <div className="space-y-3">
+            {insights.locationQueries.slice(0, 5).map((query, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-slate-900 dark:text-slate-100 truncate">{query.query}</p>
+                </div>
+                <div className="text-right ml-4">
+                  <p className="font-semibold text-slate-900 dark:text-slate-100">{formatNumber(query.clicks)}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Pos. {query.position.toFixed(1)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Local SEO Performance */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg">
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Local SEO Performance</h3>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="text-center">
+            <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">{formatNumber(insights.localSearchPerformance.impressions)}</div>
+            <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">Local Impressions</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl font-bold text-green-600 dark:text-green-400">{formatNumber(insights.localSearchPerformance.clicks)}</div>
+            <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">Local Clicks</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">{formatPercentage(insights.localSearchPerformance.ctr)}</div>
+            <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">Local CTR</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">{insights.localSearchPerformance.position.toFixed(1)}</div>
+            <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">Avg Position</div>
           </div>
         </div>
       </div>
