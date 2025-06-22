@@ -169,11 +169,19 @@ export class GoogleAnalyticsService {
   private initializeClient() {
     try {
       const config = {
-        client_id: process.env.GOOGLE_ANALYTICS_CLIENT_ID || process.env.GOOGLE_ADS_CLIENT_ID || '',
-        client_secret: process.env.GOOGLE_ANALYTICS_CLIENT_SECRET || process.env.GOOGLE_ADS_CLIENT_SECRET || '',
-        refresh_token: process.env.GOOGLE_ANALYTICS_REFRESH_TOKEN || process.env.GOOGLE_ADS_REFRESH_TOKEN || '',
+        client_id: process.env.GOOGLE_CLIENT_ID || '',
+        client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
+        refresh_token: process.env.GOOGLE_REFRESH_TOKEN || '',
         property_id: process.env.GOOGLE_ANALYTICS_PROPERTY_ID || '',
       };
+
+      console.log('Google Analytics config check:', {
+        hasClientId: !!config.client_id,
+        hasClientSecret: !!config.client_secret,
+        hasRefreshToken: !!config.refresh_token,
+        hasPropertyId: !!config.property_id,
+        clientIdLength: config.client_id.length,
+      });
 
       if (this.isConfigValid(config)) {
         this.config = config;
@@ -182,7 +190,7 @@ export class GoogleAnalyticsService {
         this.auth = new google.auth.OAuth2(
           config.client_id,
           config.client_secret,
-          'http://localhost:3000' // redirect URI
+          'https://restaurant-growth-checklist.vercel.app/api/auth/callback/google'
         );
         
         this.auth.setCredentials({
@@ -193,6 +201,10 @@ export class GoogleAnalyticsService {
         this.analyticsDataClient = new BetaAnalyticsDataClient({
           auth: this.auth,
         });
+        
+        console.log('Google Analytics client initialized successfully');
+      } else {
+        console.log('Google Analytics configuration invalid');
       }
     } catch (error) {
       console.error('Failed to initialize Google Analytics client:', error);
