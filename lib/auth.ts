@@ -27,6 +27,8 @@ export const authOptions: NextAuthOptions = {
       authorization: {
         params: {
           scope: 'openid email profile https://www.googleapis.com/auth/analytics.readonly https://www.googleapis.com/auth/business.manage',
+          access_type: 'offline',
+          prompt: 'consent',
         },
       },
     })
