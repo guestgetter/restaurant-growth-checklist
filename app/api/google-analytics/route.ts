@@ -233,12 +233,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Debug environment variables
-    console.log('🔍 Environment variables check:');
+    console.log('🔍 Google Analytics API Debug:');
     console.log('- GOOGLE_CLIENT_ID exists:', !!process.env.GOOGLE_CLIENT_ID);
     console.log('- GOOGLE_CLIENT_SECRET exists:', !!process.env.GOOGLE_CLIENT_SECRET);
     console.log('- GOOGLE_REFRESH_TOKEN exists:', !!process.env.GOOGLE_REFRESH_TOKEN);
-    console.log('- GOOGLE_CLIENT_ID length:', process.env.GOOGLE_CLIENT_ID?.length || 0);
-    console.log('- GOOGLE_CLIENT_ID preview:', process.env.GOOGLE_CLIENT_ID?.substring(0, 20) + '...' || 'MISSING');
+    console.log('- Client ID requested:', clientId);
 
     // Initialize Google Analytics service
     console.log('Initializing Google Analytics service...');
@@ -249,13 +248,14 @@ export async function GET(request: NextRequest) {
     console.log('Google Analytics service configured:', isConfigured);
     
     if (!isConfigured) {
-      console.log('Google Analytics API not configured, returning demo data');
+      console.log('❌ Google Analytics API not configured - missing environment variables');
       const demoData = generateDemoAnalyticsData();
       return NextResponse.json({
         ...demoData,
         configurationStatus: {
+          issue: 'Google Analytics API credentials not configured properly',
           hasEnvironmentVariables: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_REFRESH_TOKEN),
-          issue: 'Library compatibility issue with @google-analytics/data package - temporarily showing demo data'
+          message: 'Contact system administrator to configure Google Analytics API credentials'
         }
       });
     }
@@ -272,61 +272,105 @@ export async function GET(request: NextRequest) {
 
     // Get Analytics Property ID - either from query param or client database
     let analyticsPropertyId = propertyId;
+    let clientData = null;
     
     if (!analyticsPropertyId && clientId !== 'demo') {
       try {
         // Fetch client data to get Google Analytics Property ID
-        const client = await prisma.client.findUnique({
+        clientData = await prisma.client.findUnique({
           where: { id: clientId },
-          select: { googleAnalyticsPropertyId: true, name: true }
+          select: { 
+            id: true,
+            name: true, 
+            googleAnalyticsPropertyId: true,
+            googleAdsCustomerId: true 
+          }
         });
         
-        if (client?.googleAnalyticsPropertyId) {
-          analyticsPropertyId = client.googleAnalyticsPropertyId;
-          console.log(`Using Analytics Property ID ${analyticsPropertyId} for client: ${client.name}`);
+        console.log('📊 Client data from database:', {
+          id: clientData?.id,
+          name: clientData?.name,
+          hasAnalyticsPropertyId: !!clientData?.googleAnalyticsPropertyId,
+          analyticsPropertyId: clientData?.googleAnalyticsPropertyId
+        });
+        
+        if (clientData?.googleAnalyticsPropertyId) {
+          analyticsPropertyId = clientData.googleAnalyticsPropertyId;
+          console.log(`✅ Using Analytics Property ID ${analyticsPropertyId} for client: ${clientData.name}`);
         } else {
-          console.log(`No Analytics Property ID configured for client: ${client?.name || clientId}`);
+          console.log(`❌ No Analytics Property ID configured for client: ${clientData?.name || clientId}`);
         }
       } catch (dbError) {
-        console.error('Error fetching client Analytics Property ID:', dbError);
+        console.error('❌ Error fetching client Analytics Property ID:', dbError);
       }
     }
 
     if (!analyticsPropertyId) {
-      console.log('No Analytics property ID configured, returning demo data');
-      return NextResponse.json(generateDemoAnalyticsData());
+      console.log('❌ No Analytics Property ID available - returning demo data');
+      const demoData = generateDemoAnalyticsData();
+      return NextResponse.json({
+        ...demoData,
+        configurationStatus: {
+          issue: 'Google Analytics Property ID not configured for this client',
+          clientName: clientData?.name || `Client ${clientId}`,
+          message: 'Go to Settings → Client Management and add a Google Analytics Property ID for this client',
+          suggestedPropertyId: '392071184 (Chef On Call)',
+          hasApiCredentials: true
+        }
+      });
     }
 
     try {
+      console.log(`🚀 Fetching real Google Analytics data for property ${analyticsPropertyId}...`);
+      
       // Fetch real Analytics data
       const insights = await analyticsService.getRestaurantAnalyticsInsights(
         analyticsPropertyId,
         dateRangeObj
       );
 
+      console.log('✅ Successfully fetched real Google Analytics data!');
+      console.log('📈 Data summary:', {
+        totalSessions: insights.totalSessions,
+        totalUsers: insights.totalUsers,
+        totalRevenue: insights.totalRevenue
+      });
+
       return NextResponse.json({
         demo: false,
         insights,
         dateRange: dateRangeObj,
         propertyId: analyticsPropertyId,
+        clientName: clientData?.name,
+        dataSource: 'Real Google Analytics API'
       });
 
     } catch (apiError) {
-      console.error('Google Analytics API error:', apiError);
+      console.error('❌ Google Analytics API error:', apiError);
       
-      // Return demo data if API fails
+      // Return demo data if API fails with helpful error message
+      const demoData = generateDemoAnalyticsData();
       return NextResponse.json({
-        ...generateDemoAnalyticsData(),
-        error: 'API temporarily unavailable, showing demo data',
+        ...demoData,
+        configurationStatus: {
+          issue: 'Google Analytics API call failed',
+          propertyId: analyticsPropertyId,
+          error: apiError instanceof Error ? apiError.message : 'Unknown API error',
+          message: 'Returning demo data due to API error'
+        }
       });
     }
 
   } catch (error) {
-    console.error('Error in Google Analytics API route:', error);
+    console.error('❌ Error in Google Analytics API route:', error);
     
     return NextResponse.json({
       ...generateDemoAnalyticsData(),
-      error: 'Service temporarily unavailable, showing demo data',
+      configurationStatus: {
+        issue: 'Service temporarily unavailable',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        message: 'Returning demo data due to service error'
+      }
     });
   }
 } 
