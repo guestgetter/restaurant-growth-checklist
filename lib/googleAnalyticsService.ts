@@ -202,12 +202,18 @@ export class GoogleAnalyticsService {
         });
 
         console.log('Initializing Analytics Data API client...');
-        // Initialize Analytics Data API client
-        this.analyticsDataClient = new BetaAnalyticsDataClient({
-          auth: this.auth,
-        });
-        
-        console.log('Google Analytics client initialized successfully');
+        // Initialize Analytics Data API client - try with minimal config first
+        try {
+          this.analyticsDataClient = new BetaAnalyticsDataClient({
+            auth: this.auth,
+          });
+          console.log('Google Analytics client initialized successfully');
+        } catch (clientError) {
+          console.error('Failed to initialize BetaAnalyticsDataClient:', clientError);
+          // Try alternative initialization
+          this.analyticsDataClient = new BetaAnalyticsDataClient();
+          console.log('Google Analytics client initialized with default config');
+        }
       } else {
         console.log('Google Analytics configuration invalid - missing required environment variables');
         console.log('Missing variables:', {
