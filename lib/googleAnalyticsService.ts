@@ -201,33 +201,10 @@ export class GoogleAnalyticsService {
           refresh_token: config.refresh_token,
         });
 
-        console.log('Initializing Analytics Data API client...');
-        // Initialize Analytics Data API client with credentials directly
-        try {
-          this.analyticsDataClient = new BetaAnalyticsDataClient({
-            credentials: {
-              client_id: config.client_id,
-              client_secret: config.client_secret,
-              refresh_token: config.refresh_token,
-              type: 'authorized_user',
-            },
-          });
-          console.log('Google Analytics client initialized successfully with direct credentials');
-        } catch (clientError) {
-          console.error('Failed to initialize BetaAnalyticsDataClient with credentials:', clientError);
-          // Fallback: try with auth object but catch the getUniverseDomain error
-          try {
-            this.analyticsDataClient = new BetaAnalyticsDataClient({
-              auth: this.auth,
-            });
-            console.log('Google Analytics client initialized successfully with auth object');
-          } catch (authError) {
-            console.error('Failed to initialize with auth object:', authError);
-            // Last resort: initialize without auth and we'll add it later
-            this.analyticsDataClient = new BetaAnalyticsDataClient();
-            console.log('Google Analytics client initialized with default config (no auth)');
-          }
-        }
+        console.log('Google Analytics integration temporarily disabled due to library compatibility issues');
+        console.log('Will return demo data until the integration is fixed');
+        // TODO: Fix the getUniverseDomain compatibility issue with @google-analytics/data package
+        this.analyticsDataClient = null;
       } else {
         console.log('Google Analytics configuration invalid - missing required environment variables');
         console.log('Missing variables:', {

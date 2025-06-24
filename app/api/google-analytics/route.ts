@@ -250,7 +250,14 @@ export async function GET(request: NextRequest) {
     
     if (!isConfigured) {
       console.log('Google Analytics API not configured, returning demo data');
-      return NextResponse.json(generateDemoAnalyticsData());
+      const demoData = generateDemoAnalyticsData();
+      return NextResponse.json({
+        ...demoData,
+        configurationStatus: {
+          hasEnvironmentVariables: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_REFRESH_TOKEN),
+          issue: 'Library compatibility issue with @google-analytics/data package - temporarily showing demo data'
+        }
+      });
     }
 
     // Calculate date range
