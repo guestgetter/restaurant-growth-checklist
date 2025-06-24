@@ -5,7 +5,8 @@ export default withAuth(
   function middleware(req) {
     // Allow these specific API routes to be public
     const publicRoutes = [
-      '/api/auth'
+      '/api/auth',
+      '/api/debug'
     ]
     
     const isPublicRoute = publicRoutes.some(route => 
