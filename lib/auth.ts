@@ -45,6 +45,12 @@ export const authOptions: NextAuthOptions = {
       
       // Store Google access token for Business Profile API calls
       if (account?.provider === 'google') {
+        console.log('🔧 Google OAuth Account Data:', {
+          access_token: account.access_token ? 'Present' : 'Missing',
+          refresh_token: account.refresh_token ? 'Present' : 'Missing',
+          expires_at: account.expires_at,
+          scope: account.scope
+        });
         token.accessToken = account.access_token;
         token.refreshToken = account.refresh_token;
       }
