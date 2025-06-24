@@ -47,7 +47,7 @@ export default withAuth(
 
 export const config = {
   matcher: [
-    '/api/((?!auth).*)',
+    '/api/((?!auth|debug).*)',
     '/dashboard/:path*',
     '/checklist/:path*',
     '/client-profile/:path*',
