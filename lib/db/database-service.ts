@@ -8,6 +8,7 @@ export interface DatabaseClient extends Client {
   industry?: string;
   logo?: string;
   metaAdsAccountId?: string;
+  googleAnalyticsPropertyId?: string;
   branding?: any;
   contact?: any;
   userId?: string;
@@ -158,6 +159,7 @@ export class DatabaseService {
           ...(updates.currentPhase !== undefined && { currentPhase: updates.currentPhase }),
           ...(updates.googleAdsCustomerId !== undefined && { googleAdsCustomerId: updates.googleAdsCustomerId }),
           ...(updates.metaAdsAccountId !== undefined && { metaAdsAccountId: updates.metaAdsAccountId }),
+          ...(updates.googleAnalyticsPropertyId !== undefined && { googleAnalyticsPropertyId: updates.googleAnalyticsPropertyId }),
           ...(updates.dreamCaseStudyGoal !== undefined && { dreamCaseStudyGoal: updates.dreamCaseStudyGoal }),
           ...(updates.targetAudience !== undefined && { targetAudience: updates.targetAudience }),
           ...(updates.topCompetitors !== undefined && { topCompetitors: updates.topCompetitors }),
@@ -205,6 +207,7 @@ export class DatabaseService {
           ...(updates.currentPhase !== undefined && { currentPhase: updates.currentPhase }),
           ...(updates.googleAdsCustomerId !== undefined && { googleAdsCustomerId: updates.googleAdsCustomerId }),
           ...(updates.metaAdsAccountId !== undefined && { metaAdsAccountId: updates.metaAdsAccountId }),
+          ...(updates.googleAnalyticsPropertyId !== undefined && { googleAnalyticsPropertyId: updates.googleAnalyticsPropertyId }),
           ...(updates.dreamCaseStudyGoal !== undefined && { dreamCaseStudyGoal: updates.dreamCaseStudyGoal }),
           ...(updates.targetAudience !== undefined && { targetAudience: updates.targetAudience }),
           ...(updates.topCompetitors !== undefined && { topCompetitors: updates.topCompetitors }),
