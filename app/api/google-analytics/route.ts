@@ -232,6 +232,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Client ID is required' }, { status: 400 });
     }
 
+    // Debug environment variables
+    console.log('🔍 Environment variables check:');
+    console.log('- GOOGLE_CLIENT_ID exists:', !!process.env.GOOGLE_CLIENT_ID);
+    console.log('- GOOGLE_CLIENT_SECRET exists:', !!process.env.GOOGLE_CLIENT_SECRET);
+    console.log('- GOOGLE_REFRESH_TOKEN exists:', !!process.env.GOOGLE_REFRESH_TOKEN);
+    console.log('- GOOGLE_CLIENT_ID length:', process.env.GOOGLE_CLIENT_ID?.length || 0);
+    console.log('- GOOGLE_CLIENT_ID preview:', process.env.GOOGLE_CLIENT_ID?.substring(0, 20) + '...' || 'MISSING');
+
     // Initialize Google Analytics service
     console.log('Initializing Google Analytics service...');
     const analyticsService = new GoogleAnalyticsService();
