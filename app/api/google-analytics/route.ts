@@ -234,10 +234,15 @@ export async function GET(request: NextRequest) {
 
     // Debug environment variables
     console.log('🔍 Google Analytics API Debug:');
+    console.log('- Environment:', process.env.NODE_ENV);
+    console.log('- Vercel Environment:', process.env.VERCEL_ENV);
     console.log('- GOOGLE_CLIENT_ID exists:', !!process.env.GOOGLE_CLIENT_ID);
     console.log('- GOOGLE_CLIENT_SECRET exists:', !!process.env.GOOGLE_CLIENT_SECRET);
     console.log('- GOOGLE_REFRESH_TOKEN exists:', !!process.env.GOOGLE_REFRESH_TOKEN);
+    console.log('- GOOGLE_CLIENT_ID preview:', process.env.GOOGLE_CLIENT_ID ? process.env.GOOGLE_CLIENT_ID.substring(0, 20) + '...' : 'MISSING');
+    console.log('- GOOGLE_REFRESH_TOKEN preview:', process.env.GOOGLE_REFRESH_TOKEN ? process.env.GOOGLE_REFRESH_TOKEN.substring(0, 20) + '...' : 'MISSING');
     console.log('- Client ID requested:', clientId);
+    console.log('- Property ID from query:', propertyId);
 
     // Initialize Google Analytics service
     console.log('Initializing Google Analytics service...');
@@ -255,6 +260,13 @@ export async function GET(request: NextRequest) {
         configurationStatus: {
           issue: 'Google Analytics API credentials not configured properly',
           hasEnvironmentVariables: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_REFRESH_TOKEN),
+          debugInfo: {
+            clientIdExists: !!process.env.GOOGLE_CLIENT_ID,
+            clientSecretExists: !!process.env.GOOGLE_CLIENT_SECRET,
+            refreshTokenExists: !!process.env.GOOGLE_REFRESH_TOKEN,
+            environment: process.env.NODE_ENV,
+            vercelEnv: process.env.VERCEL_ENV
+          },
           message: 'Contact system administrator to configure Google Analytics API credentials'
         }
       });
@@ -276,6 +288,8 @@ export async function GET(request: NextRequest) {
     
     if (!analyticsPropertyId && clientId !== 'demo') {
       try {
+        console.log('🔍 Fetching client data from database for clientId:', clientId);
+        
         // Fetch client data to get Google Analytics Property ID
         clientData = await prisma.client.findUnique({
           where: { id: clientId },
@@ -291,7 +305,9 @@ export async function GET(request: NextRequest) {
           id: clientData?.id,
           name: clientData?.name,
           hasAnalyticsPropertyId: !!clientData?.googleAnalyticsPropertyId,
-          analyticsPropertyId: clientData?.googleAnalyticsPropertyId
+          analyticsPropertyId: clientData?.googleAnalyticsPropertyId,
+          googleAdsCustomerId: clientData?.googleAdsCustomerId,
+          fullClientData: clientData
         });
         
         if (clientData?.googleAnalyticsPropertyId) {
@@ -299,6 +315,7 @@ export async function GET(request: NextRequest) {
           console.log(`✅ Using Analytics Property ID ${analyticsPropertyId} for client: ${clientData.name}`);
         } else {
           console.log(`❌ No Analytics Property ID configured for client: ${clientData?.name || clientId}`);
+          console.log('📝 Client has googleAdsCustomerId:', clientData?.googleAdsCustomerId);
         }
       } catch (dbError) {
         console.error('❌ Error fetching client Analytics Property ID:', dbError);
@@ -313,6 +330,7 @@ export async function GET(request: NextRequest) {
         configurationStatus: {
           issue: 'Google Analytics Property ID not configured for this client',
           clientName: clientData?.name || `Client ${clientId}`,
+          clientData: clientData,
           message: 'Go to Settings → Client Management and add a Google Analytics Property ID for this client',
           suggestedPropertyId: '392071184 (Chef On Call)',
           hasApiCredentials: true
@@ -322,6 +340,7 @@ export async function GET(request: NextRequest) {
 
     try {
       console.log(`🚀 Fetching real Google Analytics data for property ${analyticsPropertyId}...`);
+      console.log('📊 Using date range:', dateRangeObj);
       
       // Fetch real Analytics data
       const insights = await analyticsService.getRestaurantAnalyticsInsights(
@@ -347,6 +366,11 @@ export async function GET(request: NextRequest) {
 
     } catch (apiError) {
       console.error('❌ Google Analytics API error:', apiError);
+      console.error('❌ Full error details:', {
+        message: apiError instanceof Error ? apiError.message : 'Unknown API error',
+        stack: apiError instanceof Error ? apiError.stack : 'No stack trace',
+        propertyId: analyticsPropertyId
+      });
       
       // Return demo data if API fails with helpful error message
       const demoData = generateDemoAnalyticsData();
@@ -356,6 +380,7 @@ export async function GET(request: NextRequest) {
           issue: 'Google Analytics API call failed',
           propertyId: analyticsPropertyId,
           error: apiError instanceof Error ? apiError.message : 'Unknown API error',
+          fullError: apiError instanceof Error ? apiError.stack : 'No error details',
           message: 'Returning demo data due to API error'
         }
       });
