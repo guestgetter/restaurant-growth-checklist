@@ -203,6 +203,8 @@ MIT License - feel free to use this for your restaurant clients!
 3. Client-specific content
 4. Custom domains
 
+<!-- Environment updated: 2024-12-22 - Google Analytics refresh token updated -->
+
 ---
 
 **Ready to help restaurants grow? Deploy this checklist and start tracking success! 🚀** 
