@@ -233,10 +233,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Initialize Google Analytics service
+    console.log('Initializing Google Analytics service...');
     const analyticsService = new GoogleAnalyticsService();
 
     // Check if service is configured
-    if (!analyticsService.isConfigured()) {
+    const isConfigured = analyticsService.isConfigured();
+    console.log('Google Analytics service configured:', isConfigured);
+    
+    if (!isConfigured) {
       console.log('Google Analytics API not configured, returning demo data');
       return NextResponse.json(generateDemoAnalyticsData());
     }

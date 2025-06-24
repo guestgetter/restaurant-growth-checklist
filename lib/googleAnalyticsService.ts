@@ -178,11 +178,17 @@ export class GoogleAnalyticsService {
         hasClientSecret: !!config.client_secret,
         hasRefreshToken: !!config.refresh_token,
         clientIdLength: config.client_id.length,
+        clientSecretLength: config.client_secret.length,
+        refreshTokenLength: config.refresh_token.length,
+        clientIdPreview: config.client_id ? config.client_id.substring(0, 20) + '...' : 'MISSING',
+        nodeEnv: process.env.NODE_ENV,
+        vercelEnv: process.env.VERCEL_ENV,
       });
 
       if (this.isConfigValid(config)) {
         this.config = config;
         
+        console.log('Initializing Google OAuth2 client...');
         // Initialize OAuth2 client
         this.auth = new google.auth.OAuth2(
           config.client_id,
@@ -190,10 +196,12 @@ export class GoogleAnalyticsService {
           'https://restaurant-growth-checklist.vercel.app/api/auth/callback/google'
         );
         
+        console.log('Setting OAuth2 credentials...');
         this.auth.setCredentials({
           refresh_token: config.refresh_token,
         });
 
+        console.log('Initializing Analytics Data API client...');
         // Initialize Analytics Data API client
         this.analyticsDataClient = new BetaAnalyticsDataClient({
           auth: this.auth,
@@ -201,7 +209,12 @@ export class GoogleAnalyticsService {
         
         console.log('Google Analytics client initialized successfully');
       } else {
-        console.log('Google Analytics configuration invalid');
+        console.log('Google Analytics configuration invalid - missing required environment variables');
+        console.log('Missing variables:', {
+          client_id: !config.client_id,
+          client_secret: !config.client_secret,
+          refresh_token: !config.refresh_token,
+        });
       }
     } catch (error) {
       console.error('Failed to initialize Google Analytics client:', error);
