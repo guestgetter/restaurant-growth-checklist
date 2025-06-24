@@ -202,17 +202,31 @@ export class GoogleAnalyticsService {
         });
 
         console.log('Initializing Analytics Data API client...');
-        // Initialize Analytics Data API client - try with minimal config first
+        // Initialize Analytics Data API client with credentials directly
         try {
           this.analyticsDataClient = new BetaAnalyticsDataClient({
-            auth: this.auth,
+            credentials: {
+              client_id: config.client_id,
+              client_secret: config.client_secret,
+              refresh_token: config.refresh_token,
+              type: 'authorized_user',
+            },
           });
-          console.log('Google Analytics client initialized successfully');
+          console.log('Google Analytics client initialized successfully with direct credentials');
         } catch (clientError) {
-          console.error('Failed to initialize BetaAnalyticsDataClient:', clientError);
-          // Try alternative initialization
-          this.analyticsDataClient = new BetaAnalyticsDataClient();
-          console.log('Google Analytics client initialized with default config');
+          console.error('Failed to initialize BetaAnalyticsDataClient with credentials:', clientError);
+          // Fallback: try with auth object but catch the getUniverseDomain error
+          try {
+            this.analyticsDataClient = new BetaAnalyticsDataClient({
+              auth: this.auth,
+            });
+            console.log('Google Analytics client initialized successfully with auth object');
+          } catch (authError) {
+            console.error('Failed to initialize with auth object:', authError);
+            // Last resort: initialize without auth and we'll add it later
+            this.analyticsDataClient = new BetaAnalyticsDataClient();
+            console.log('Google Analytics client initialized with default config (no auth)');
+          }
         }
       } else {
         console.log('Google Analytics configuration invalid - missing required environment variables');
