@@ -12,9 +12,20 @@ import {
   Users,
   Palette,
   Building,
-  CheckCircle
+  CheckCircle,
+  RefreshCw,
+  Clock,
+  Settings
 } from 'lucide-react';
 import { initializeDefaultClient, getAllClients } from '../../lib/clientUtils';
+import { 
+  recurringTaskTemplates, 
+  RecurringTaskTemplate 
+} from '../../app/data/checklist-data';
+import { 
+  getDefaultRecurringTaskSettings,
+  formatFrequency 
+} from '../../lib/recurringTaskUtils';
 
 export interface Client {
   id: string;
@@ -36,6 +47,19 @@ export interface Client {
   googleAnalyticsPropertyId?: string;
   status: 'active' | 'inactive';
   createdAt: string;
+  
+  // Recurring task settings
+  recurringTaskSettings?: {
+    enabledTasks: string[];
+    customFrequencies: Record<string, string>;
+    blackoutDates: string[];
+    preferredSchedule: 'morning' | 'afternoon' | 'end-of-day';
+    notifications: {
+      dueSoon: boolean;
+      overdue: boolean;
+      emailReminders: boolean;
+    };
+  };
 }
 
 const defaultClient: Omit<Client, 'id' | 'createdAt'> = {
@@ -732,6 +756,165 @@ export default function ClientManagement() {
                         rows={3}
                         placeholder="123 Main St, Anytown, USA"
                       />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Recurring Task Settings */}
+                <div>
+                  <h4 className="font-semibold text-slate-800 dark:text-slate-100 mb-3 flex items-center gap-2">
+                    <RefreshCw size={20} />
+                    Recurring Task Settings
+                  </h4>
+                  <div className="space-y-4">
+                    {/* Initialize settings if not exists */}
+                    {!editingClient.recurringTaskSettings && editingClient.industry && (() => {
+                      const defaultSettings = getDefaultRecurringTaskSettings(editingClient as Client);
+                      setEditingClient({
+                        ...editingClient,
+                        recurringTaskSettings: defaultSettings
+                      });
+                      return null;
+                    })()}
+                    
+                    {/* Task List */}
+                    <div className="space-y-3">
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                        Available Tasks for {editingClient.industry || 'Restaurant'}
+                      </label>
+                      {recurringTaskTemplates
+                        .filter(template => 
+                          !editingClient.industry || 
+                          template.clientTypeRelevance.includes(editingClient.industry)
+                        )
+                        .map(template => {
+                          const isEnabled = editingClient.recurringTaskSettings?.enabledTasks.includes(template.id) ?? false;
+                          const customFreq = editingClient.recurringTaskSettings?.customFrequencies[template.id];
+                          
+                          return (
+                            <div key={template.id} className="border border-slate-200 dark:border-slate-600 rounded-lg p-4">
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-3 mb-2">
+                                    <input
+                                      type="checkbox"
+                                      checked={isEnabled}
+                                      onChange={(e) => {
+                                        const newEnabledTasks = e.target.checked
+                                          ? [...(editingClient.recurringTaskSettings?.enabledTasks || []), template.id]
+                                          : (editingClient.recurringTaskSettings?.enabledTasks || []).filter(id => id !== template.id);
+                                        
+                                        setEditingClient({
+                                          ...editingClient,
+                                          recurringTaskSettings: {
+                                            ...editingClient.recurringTaskSettings!,
+                                            enabledTasks: newEnabledTasks
+                                          }
+                                        });
+                                      }}
+                                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                                    />
+                                    <div>
+                                      <h5 className="font-medium text-slate-800 dark:text-slate-100">{template.name}</h5>
+                                      <p className="text-sm text-slate-600 dark:text-slate-400">{template.description}</p>
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
+                                    <span className={`px-2 py-1 rounded-full ${
+                                      template.priority === 'high' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
+                                      template.priority === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300' :
+                                      'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                    }`}>
+                                      {template.priority} priority
+                                    </span>
+                                    <span>Default: {formatFrequency(template.defaultFrequency)}</span>
+                                    {template.isOptional && <span className="text-blue-600 dark:text-blue-400">Optional</span>}
+                                  </div>
+                                </div>
+                                
+                                {isEnabled && (
+                                  <div className="w-48">
+                                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                                      Frequency
+                                    </label>
+                                    <select
+                                      value={customFreq || template.defaultFrequency}
+                                      onChange={(e) => {
+                                        setEditingClient({
+                                          ...editingClient,
+                                          recurringTaskSettings: {
+                                            ...editingClient.recurringTaskSettings!,
+                                            customFrequencies: {
+                                              ...editingClient.recurringTaskSettings!.customFrequencies,
+                                              [template.id]: e.target.value
+                                            }
+                                          }
+                                        });
+                                      }}
+                                      className="w-full p-2 text-xs border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
+                                    >
+                                      <option value="daily">Daily</option>
+                                      <option value="weekly">Weekly</option>
+                                      <option value="bi-weekly">Bi-weekly</option>
+                                      <option value="monthly">Monthly</option>
+                                      <option value="quarterly">Quarterly</option>
+                                    </select>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+
+                    {/* Notification Settings */}
+                    <div className="border-t border-slate-200 dark:border-slate-600 pt-4">
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
+                        Notification Preferences
+                      </label>
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={editingClient.recurringTaskSettings?.notifications.dueSoon ?? true}
+                            onChange={(e) => setEditingClient({
+                              ...editingClient,
+                              recurringTaskSettings: {
+                                ...editingClient.recurringTaskSettings!,
+                                notifications: {
+                                  ...editingClient.recurringTaskSettings!.notifications,
+                                  dueSoon: e.target.checked
+                                }
+                              }
+                            })}
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-slate-700 dark:text-slate-300">
+                            Notify when tasks are due soon (3 days)
+                          </span>
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={editingClient.recurringTaskSettings?.notifications.overdue ?? true}
+                            onChange={(e) => setEditingClient({
+                              ...editingClient,
+                              recurringTaskSettings: {
+                                ...editingClient.recurringTaskSettings!,
+                                notifications: {
+                                  ...editingClient.recurringTaskSettings!.notifications,
+                                  overdue: e.target.checked
+                                }
+                              }
+                            })}
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-slate-700 dark:text-slate-300">
+                            Notify when tasks are overdue
+                          </span>
+                        </label>
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -20,9 +20,28 @@ import {
   FileText,
   Play,
   Settings,
-  BookOpen
+  BookOpen,
+  Clock,
+  AlertCircle,
+  Calendar,
+  RefreshCw
 } from 'lucide-react';
-import { checklistData, ChecklistItem, ChecklistSection, ChecklistSubTask } from '../app/data/checklist-data';
+import { 
+  checklistData, 
+  ChecklistItem, 
+  ChecklistSection, 
+  ChecklistSubTask,
+  RecurringTaskInstance,
+  recurringTaskTemplates
+} from '../app/data/checklist-data';
+import {
+  generateTaskInstancesForClient,
+  getTaskUrgency,
+  getTaskStatusColor,
+  formatFrequency,
+  calculateNextDueDate,
+  getDefaultRecurringTaskSettings
+} from '../lib/recurringTaskUtils';
 import { Client } from './Settings/ClientManagement';
 import { migrateGlobalProgressToClient } from '../lib/migrateProgress';
 import { 
@@ -48,6 +67,11 @@ export default function ChecklistApp() {
   const [showStats, setShowStats] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [currentClient, setCurrentClient] = useState<Client | null>(null);
+  
+  // Recurring tasks state
+  const [recurringTasks, setRecurringTasks] = useState<RecurringTaskInstance[]>([]);
+  const [showRecurringView, setShowRecurringView] = useState(false);
+  const [completedRecurringTasks, setCompletedRecurringTasks] = useState<Set<string>>(new Set());
 
   // Load current client and client-specific progress
   // Load progress from database with localStorage fallback
@@ -391,6 +415,113 @@ export default function ChecklistApp() {
     }
   };
 
+  // Load recurring tasks for current client
+  const loadRecurringTasks = () => {
+    if (!currentClient) return;
+    
+    // Initialize recurring task settings if not exists
+    if (!currentClient.recurringTaskSettings) {
+      const defaultSettings = getDefaultRecurringTaskSettings(currentClient);
+      const updatedClient = { ...currentClient, recurringTaskSettings: defaultSettings };
+      setCurrentClient(updatedClient);
+      
+      // Save updated client
+      const savedClients = safeLocalStorage.getItem('growth-os-clients');
+      const clients = safeJsonParse<Client[]>(savedClients, []);
+      const updatedClients = clients.map(c => c.id === updatedClient.id ? updatedClient : c);
+      safeLocalStorage.setItem('growth-os-clients', safeJsonStringify(updatedClients));
+    }
+    
+    // Generate recurring task instances
+    const instances = generateTaskInstancesForClient(currentClient);
+    
+    // Load completed recurring tasks from localStorage
+    const completedKey = `recurring-tasks-completed-${currentClient.id}`;
+    const savedCompleted = safeLocalStorage.getItem(completedKey);
+    const completedTaskIds = safeJsonParse<string[]>(savedCompleted, []);
+    setCompletedRecurringTasks(new Set(completedTaskIds));
+    
+    // Update instances with completion status
+    const updatedInstances = instances.map(instance => ({
+      ...instance,
+      completed: completedTaskIds.includes(instance.id)
+    }));
+    
+    setRecurringTasks(updatedInstances);
+  };
+
+  // Toggle recurring task completion
+  const toggleRecurringTask = (taskId: string) => {
+    if (!currentClient) return;
+    
+    const newCompletedRecurring = new Set(completedRecurringTasks);
+    
+    if (newCompletedRecurring.has(taskId)) {
+      newCompletedRecurring.delete(taskId);
+    } else {
+      newCompletedRecurring.add(taskId);
+      
+      // If task is completed, calculate next due date
+      const task = recurringTasks.find(t => t.id === taskId);
+      if (task) {
+        const template = recurringTaskTemplates.find(t => t.id === task.templateId);
+        if (template) {
+          const frequency = currentClient.recurringTaskSettings?.customFrequencies[template.id] || template.defaultFrequency;
+          const nextDue = calculateNextDueDate(frequency, new Date().toISOString());
+          
+          // Update the task with completion and next due date
+          setRecurringTasks(prev => prev.map(t => 
+            t.id === taskId 
+              ? { ...t, completed: true, completedDate: new Date().toISOString(), dueDate: nextDue }
+              : t
+          ));
+        }
+      }
+    }
+    
+    setCompletedRecurringTasks(newCompletedRecurring);
+    
+    // Save to localStorage
+    const completedKey = `recurring-tasks-completed-${currentClient.id}`;
+    safeLocalStorage.setItem(completedKey, safeJsonStringify(Array.from(newCompletedRecurring)));
+  };
+
+  // Reset a recurring task (for overdue tasks)
+  const resetRecurringTask = (taskId: string) => {
+    if (!currentClient) return;
+    
+    const task = recurringTasks.find(t => t.id === taskId);
+    if (task) {
+      const template = recurringTaskTemplates.find(t => t.id === task.templateId);
+      if (template) {
+        const frequency = currentClient.recurringTaskSettings?.customFrequencies[template.id] || template.defaultFrequency;
+        const nextDue = calculateNextDueDate(frequency);
+        
+        // Update the task with new due date
+        setRecurringTasks(prev => prev.map(t => 
+          t.id === taskId 
+            ? { ...t, dueDate: nextDue, completed: false, isOverdue: false, daysSinceDue: 0 }
+            : t
+        ));
+        
+        // Remove from completed tasks if it was completed
+        const newCompletedRecurring = new Set(completedRecurringTasks);
+        newCompletedRecurring.delete(taskId);
+        setCompletedRecurringTasks(newCompletedRecurring);
+        
+        const completedKey = `recurring-tasks-completed-${currentClient.id}`;
+        safeLocalStorage.setItem(completedKey, safeJsonStringify(Array.from(newCompletedRecurring)));
+      }
+    }
+  };
+
+  // Load recurring tasks when client changes
+  useEffect(() => {
+    if (currentClient) {
+      loadRecurringTasks();
+    }
+  }, [currentClient]);
+
   const resetProgress = () => {
     if (!currentClient?.id || !currentClient?.name) return;
     
@@ -408,6 +539,7 @@ export default function ChecklistApp() {
   const exportProgress = () => {
     if (!currentClient) return;
     
+    const exportTotalItems = sections.reduce((acc, section) => acc + section.items.length, 0);
     const data = {
       client: {
         name: currentClient.name,
@@ -416,10 +548,10 @@ export default function ChecklistApp() {
       timestamp: new Date().toISOString(),
       completedItems: Array.from(completedItems),
       completedSubTasks: Array.from(completedSubTasks),
-      totalItems: sections.reduce((acc, section) => acc + section.items.length, 0),
+      totalItems: exportTotalItems,
       totalSubTasks: sections.reduce((acc, section) => 
         acc + section.items.reduce((itemAcc, item) => itemAcc + (item.subTasks?.length || 0), 0), 0),
-      progress: Math.round((completedItems.size / sections.reduce((acc, section) => acc + section.items.length, 0)) * 100)
+      progress: Math.round((completedItems.size / exportTotalItems) * 100)
     };
     
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -434,10 +566,7 @@ export default function ChecklistApp() {
   const shareProgress = async () => {
     if (!currentClient) return;
     
-    const totalItems = sections.reduce((acc, section) => acc + section.items.length, 0);
-    const progress = Math.round((completedItems.size / totalItems) * 100);
-    
-    const shareText = `${currentClient.name} - Restaurant Growth OS Checklist Progress: ${completedItems.size}/${totalItems} items completed (${progress}%)`;
+    const shareText = `${currentClient.name} - Restaurant Growth OS Checklist Progress: ${completedCount}/${totalItems} items completed (${progressPercentage}%)`;
     
     if (navigator.share) {
       try {
@@ -463,9 +592,6 @@ export default function ChecklistApp() {
     );
   }
 
-  const totalItems = sections.reduce((acc, section) => acc + section.items.length, 0);
-  const progressPercentage = Math.round((completedItems.size / totalItems) * 100);
-
   const getSectionProgress = (section: ChecklistSection) => {
     // Defensive programming for section progress calculation
     if (!section || !Array.isArray(section.items)) {
@@ -486,6 +612,17 @@ export default function ChecklistApp() {
   const filteredSections = currentView === 'all' 
     ? (Array.isArray(sections) ? sections : [])
     : (Array.isArray(sections) ? sections.filter(section => section?.id === currentView) : []);
+
+  // Calculate progress including recurring tasks when appropriate
+  const totalItems = showRecurringView 
+    ? recurringTasks.length
+    : sections.reduce((acc, section) => acc + section.items.length, 0);
+  
+  const completedCount = showRecurringView 
+    ? completedRecurringTasks.size
+    : completedItems.size;
+  
+  const progressPercentage = totalItems > 0 ? Math.round((completedCount / totalItems) * 100) : 0;
 
   return (
     <div className="h-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 transition-colors duration-300">
@@ -579,24 +716,41 @@ export default function ChecklistApp() {
             </button>
           </div>
 
-          {/* Section Navigation */}
+          {/* View Navigation */}
           <div className="flex flex-wrap gap-2 mt-4">
             <button
-              onClick={() => setCurrentView('all')}
+              onClick={() => {setCurrentView('all'); setShowRecurringView(false);}}
               className={`px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
-                currentView === 'all' 
+                currentView === 'all' && !showRecurringView
                   ? 'bg-slate-800 dark:bg-slate-600 text-white' 
                   : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
               }`}
             >
               All Sections
             </button>
+            <button
+              onClick={() => setShowRecurringView(!showRecurringView)}
+              className={`px-4 py-2 rounded-lg transition-colors text-sm font-medium flex items-center gap-2 ${
+                showRecurringView
+                  ? 'bg-blue-600 dark:bg-blue-500 text-white' 
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+              }`}
+            >
+              <RefreshCw size={16} />
+              <span className="hidden sm:inline">Recurring Tasks</span>
+              <span className="sm:hidden">Recurring</span>
+              {recurringTasks.length > 0 && (
+                <span className="text-xs bg-blue-500 dark:bg-blue-400 text-white px-2 py-1 rounded">
+                  {recurringTasks.filter(t => !t.completed).length}
+                </span>
+              )}
+            </button>
             {sections.map(section => (
               <button
                 key={section.id}
-                onClick={() => setCurrentView(section.id)}
+                onClick={() => {setCurrentView(section.id); setShowRecurringView(false);}}
                 className={`px-4 py-2 rounded-lg transition-colors text-sm font-medium flex items-center gap-2 ${
-                  currentView === section.id 
+                  currentView === section.id && !showRecurringView
                     ? 'bg-slate-800 dark:bg-slate-600 text-white' 
                     : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
                 }`}
@@ -624,16 +778,16 @@ export default function ChecklistApp() {
             <div className="max-w-6xl mx-auto px-4 py-6">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="text-center">
-                  <div className="text-2xl font-bold">{completedItems.size}</div>
+                  <div className="text-2xl font-bold">{completedCount}</div>
                   <div className="text-sm opacity-90">Completed</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold">{totalItems - completedItems.size}</div>
+                  <div className="text-2xl font-bold">{totalItems - completedCount}</div>
                   <div className="text-sm opacity-90">Remaining</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold">{totalItems}</div>
-                  <div className="text-sm opacity-90">Total Items</div>
+                  <div className="text-sm opacity-90">{showRecurringView ? 'Total Tasks' : 'Total Items'}</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold">{progressPercentage}%</div>
@@ -648,7 +802,160 @@ export default function ChecklistApp() {
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="grid gap-8">
-          {filteredSections.map((section, sectionIndex) => (
+          {/* Recurring Tasks View */}
+          {showRecurringView && (
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200/50 dark:border-slate-700/50 overflow-hidden"
+            >
+              {/* Recurring Tasks Header */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-100 dark:from-blue-900/20 dark:to-indigo-900/20 p-6 border-b border-slate-200/50 dark:border-slate-600/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center text-2xl shadow-md">
+                      🔄
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Recurring Tasks</h2>
+                      <p className="text-slate-600 dark:text-slate-300 text-sm">
+                        Ongoing operations that keep your growth momentum strong
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm text-slate-600 dark:text-slate-400">
+                      {recurringTasks.filter(t => !t.completed).length} active tasks
+                    </div>
+                    <div className="text-xs text-slate-500 dark:text-slate-500">
+                      {recurringTasks.filter(t => t.isOverdue).length} overdue
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recurring Tasks Content */}
+              <div className="p-6">
+                {recurringTasks.length === 0 ? (
+                  <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+                    <RefreshCw size={48} className="mx-auto mb-4 opacity-50" />
+                    <p>No recurring tasks configured yet.</p>
+                    <p className="text-sm mt-2">Configure recurring tasks in client settings.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {recurringTasks
+                      .sort((a, b) => getTaskUrgency(b) - getTaskUrgency(a))
+                      .map((task) => {
+                        const template = recurringTaskTemplates.find(t => t.id === task.templateId);
+                        if (!template) return null;
+                        
+                        const statusColor = getTaskStatusColor(task);
+                        const dueDate = new Date(task.dueDate);
+                        const isToday = dueDate.toDateString() === new Date().toDateString();
+                        const frequency = currentClient?.recurringTaskSettings?.customFrequencies[task.templateId] || template.defaultFrequency;
+                        
+                        return (
+                          <motion.div
+                            key={task.id}
+                            layout
+                            className={`border-l-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4 transition-all ${
+                              statusColor === 'red' ? 'border-red-500' :
+                              statusColor === 'orange' ? 'border-orange-500' :
+                              statusColor === 'yellow' ? 'border-yellow-500' :
+                              statusColor === 'green' ? 'border-green-500' :
+                              'border-blue-500'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex items-start gap-3 flex-1">
+                                <button
+                                  onClick={() => toggleRecurringTask(task.id)}
+                                  className="mt-0.5 hover:scale-110 transition-transform"
+                                >
+                                  {task.completed ? (
+                                    <CheckSquare className="text-green-500" size={20} />
+                                  ) : (
+                                    <Square className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" size={20} />
+                                  )}
+                                </button>
+                                
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <h3 className={`font-semibold ${task.completed ? 'line-through text-slate-500' : 'text-slate-800 dark:text-slate-100'}`}>
+                                      {template.name}
+                                    </h3>
+                                    <span className="px-2 py-1 text-xs rounded-full bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-300">
+                                      {formatFrequency(frequency)}
+                                    </span>
+                                    <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                                      template.priority === 'high' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
+                                      template.priority === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300' :
+                                      'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                    }`}>
+                                      {template.priority}
+                                    </span>
+                                  </div>
+                                  
+                                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                                    {template.description}
+                                  </p>
+                                  
+                                  <div className="flex items-center gap-4 text-xs">
+                                    <div className="flex items-center gap-1">
+                                      <Calendar size={14} />
+                                      <span className={`${
+                                        task.isOverdue ? 'text-red-600 dark:text-red-400 font-medium' :
+                                        isToday ? 'text-orange-600 dark:text-orange-400 font-medium' :
+                                        'text-slate-500 dark:text-slate-400'
+                                      }`}>
+                                        Due: {dueDate.toLocaleDateString()}
+                                        {isToday && ' (Today)'}
+                                        {task.isOverdue && ` (${Math.abs(task.daysSinceDue)} days overdue)`}
+                                      </span>
+                                    </div>
+                                    
+                                    {task.completed && task.completedDate && (
+                                      <div className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                                        <CheckSquare size={14} />
+                                        <span>Completed: {new Date(task.completedDate).toLocaleDateString()}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center gap-2">
+                                {task.isOverdue && !task.completed && (
+                                  <button
+                                    onClick={() => resetRecurringTask(task.id)}
+                                    className="p-2 text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors"
+                                    title="Reschedule task"
+                                  >
+                                    <Clock size={16} />
+                                  </button>
+                                )}
+                                
+                                {(task.isOverdue || (!task.completed && getTaskUrgency(task) >= 2)) && (
+                                  <div className="p-1">
+                                    <AlertCircle size={16} className={`${
+                                      task.isOverdue ? 'text-red-500' : 'text-orange-500'
+                                    }`} />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Regular Sections - Only show when not in recurring view */}
+          {!showRecurringView && filteredSections.map((section, sectionIndex) => (
             <motion.div
               key={section.id}
               initial={{ opacity: 0, y: 50 }}

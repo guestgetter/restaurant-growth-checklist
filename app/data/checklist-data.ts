@@ -1,3 +1,76 @@
+// Recurring Tasks System Types
+export interface RecurringTaskTemplate {
+  id: string;
+  name: string;
+  description: string;
+  defaultFrequency: 'daily' | 'weekly' | 'bi-weekly' | 'monthly' | 'quarterly' | 'custom';
+  customDays?: number; // for custom frequency
+  category: 'marketing' | 'operations' | 'reporting' | 'client-management';
+  priority: 'high' | 'medium' | 'low';
+  
+  // Flexibility features:
+  isOptional: boolean; // can be disabled per client
+  clientTypeRelevance: string[]; // ['Quick Service Restaurant', 'Fine Dining', etc.]
+  seasonalAdjustments?: {
+    holiday: { skipDates: string[], adjustFrequency?: string };
+    busySeason: { increaseFrequency?: boolean, months: number[] };
+  };
+  
+  // Conditional logic
+  conditions?: {
+    requiresGoogleAds?: boolean;
+    requiresEmailList?: boolean;
+    minimumRevenue?: number;
+  };
+  
+  // Task content
+  subTasks?: ChecklistSubTask[];
+  tips?: string[];
+  resources?: Array<{
+    title: string;
+    url: string;
+    type: 'article' | 'tool' | 'template' | 'video';
+  }>;
+}
+
+export interface ClientRecurringTaskConfig {
+  clientId: string;
+  taskId: string;
+  
+  // Override any template setting:
+  customFrequency?: string;
+  customDescription?: string;
+  isEnabled: boolean;
+  nextDueDate?: string;
+  lastCompleted?: string;
+  assignedTo?: string;
+  
+  // Client-specific adjustments:
+  timeOfMonth?: 'first-week' | 'mid-month' | 'month-end';
+  preferredDay?: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday';
+  blackoutDates?: string[]; // dates to skip (holidays, etc.)
+  
+  // Dynamic adjustments:
+  performanceBased?: {
+    metric: 'revenue' | 'email-engagement' | 'review-volume';
+    threshold: number;
+    adjustmentAction: 'increase-frequency' | 'decrease-frequency' | 'pause';
+  };
+}
+
+export interface RecurringTaskInstance {
+  id: string;
+  templateId: string;
+  clientId: string;
+  dueDate: string;
+  completed: boolean;
+  completedDate?: string;
+  completedBy?: string;
+  notes?: string;
+  isOverdue: boolean;
+  daysSinceDue: number;
+}
+
 export interface ChecklistSubTask {
   id: string;
   text: string;
@@ -16,6 +89,14 @@ export interface ChecklistItem {
     url: string;
     type: 'article' | 'tool' | 'template' | 'video';
   }>;
+  
+  // Recurring task properties
+  isRecurring?: boolean;
+  frequency?: 'daily' | 'weekly' | 'bi-weekly' | 'monthly' | 'quarterly' | 'custom';
+  lastCompleted?: string; // ISO date
+  nextDue?: string; // ISO date
+  autoReset?: boolean; // automatically reset when due
+  templateId?: string; // reference to RecurringTaskTemplate
 }
 
 export interface ChecklistSection {
@@ -1334,5 +1415,380 @@ export const checklistData: ChecklistSection[] = [
         ],
       },
     ],
+  },
+  {
+    id: 'recurring',
+    title: 'RECURRING OPERATIONS',
+    emoji: '🔄',
+    description: 'Ongoing tasks that repeat on a schedule to maintain consistent growth momentum',
+    items: [
+      {
+        id: 'recurring-newsletter',
+        text: 'Email Newsletter Campaign',
+        completed: false,
+        isRecurring: true,
+        frequency: 'bi-weekly',
+        autoReset: true,
+        templateId: 'newsletter-campaign',
+        description: 'Create and send regular email newsletters to maintain customer engagement and drive repeat business.',
+        subTasks: [
+          {
+            id: 'recurring-newsletter-1',
+            text: 'Plan newsletter content themes and topics',
+            completed: false,
+          },
+          {
+            id: 'recurring-newsletter-2',
+            text: 'Design newsletter layout and visuals',
+            completed: false,
+          },
+          {
+            id: 'recurring-newsletter-3',
+            text: 'Write compelling subject line and content',
+            completed: false,
+          },
+          {
+            id: 'recurring-newsletter-4',
+            text: 'Schedule and send newsletter campaign',
+            completed: false,
+          },
+          {
+            id: 'recurring-newsletter-5',
+            text: 'Analyze open rates, click rates, and engagement',
+            completed: false,
+          },
+        ],
+        tips: [
+          'Tailor frequency based on restaurant type: QSR (weekly), Fine Dining (monthly)',
+          'Include seasonal promotions, behind-the-scenes content, and special offers',
+          'Segment your list by customer preferences and visit frequency',
+          'A/B test subject lines and send times for optimal engagement',
+        ],
+        resources: [
+          {
+            title: 'Email Marketing Best Practices',
+            url: '#',
+            type: 'article',
+          },
+          {
+            title: 'Newsletter Template Library',
+            url: '#',
+            type: 'template',
+          },
+        ],
+      },
+      {
+        id: 'recurring-audit',
+        text: 'Digital Presence Audit',
+        completed: false,
+        isRecurring: true,
+        frequency: 'monthly',
+        autoReset: true,
+        templateId: 'digital-audit',
+        description: 'Comprehensive review of all digital touchpoints to ensure consistency and optimization.',
+        subTasks: [
+          {
+            id: 'recurring-audit-1',
+            text: 'Review Google Business Profile for accuracy and updates',
+            completed: false,
+          },
+          {
+            id: 'recurring-audit-2',
+            text: 'Check social media profiles for consistent branding',
+            completed: false,
+          },
+          {
+            id: 'recurring-audit-3',
+            text: 'Audit website for broken links and outdated information',
+            completed: false,
+          },
+          {
+            id: 'recurring-audit-4',
+            text: 'Review online reviews and respond to any new ones',
+            completed: false,
+          },
+          {
+            id: 'recurring-audit-5',
+            text: 'Update local directory listings as needed',
+            completed: false,
+          },
+          {
+            id: 'recurring-audit-6',
+            text: 'Generate audit report with recommendations',
+            completed: false,
+          },
+        ],
+        tips: [
+          'Use a consistent checklist to ensure nothing is missed',
+          'Take screenshots for before/after comparisons',
+          'Prioritize fixes that impact customer experience most',
+          'Track improvement metrics month over month',
+        ],
+        resources: [
+          {
+            title: 'Digital Audit Checklist',
+            url: '#',
+            type: 'template',
+          },
+        ],
+      },
+      {
+        id: 'recurring-gmb-posts',
+        text: 'Google Business Profile Posts',
+        completed: false,
+        isRecurring: true,
+        frequency: 'weekly',
+        autoReset: true,
+        templateId: 'gmb-posts',
+        description: 'Regular posting to Google Business Profile to maintain visibility and engagement.',
+        subTasks: [
+          {
+            id: 'recurring-gmb-1',
+            text: 'Plan weekly post themes (offers, events, updates)',
+            completed: false,
+          },
+          {
+            id: 'recurring-gmb-2',
+            text: 'Create engaging visuals and photos',
+            completed: false,
+          },
+          {
+            id: 'recurring-gmb-3',
+            text: 'Write compelling post copy with CTAs',
+            completed: false,
+          },
+          {
+            id: 'recurring-gmb-4',
+            text: 'Schedule and publish posts',
+            completed: false,
+          },
+          {
+            id: 'recurring-gmb-5',
+            text: 'Monitor engagement and respond to comments',
+            completed: false,
+          },
+        ],
+        tips: [
+          'Post variety: 40% offers, 30% events, 20% updates, 10% seasonal',
+          'Include high-quality food photos and behind-the-scenes content',
+          'Use location-specific keywords and hashtags',
+          'Post during peak discovery times for your restaurant type',
+        ],
+      },
+      {
+        id: 'recurring-reports',
+        text: 'Client Performance Report',
+        completed: false,
+        isRecurring: true,
+        frequency: 'monthly',
+        autoReset: true,
+        templateId: 'performance-report',
+        description: 'Comprehensive monthly performance analysis and strategic recommendations.',
+        subTasks: [
+          {
+            id: 'recurring-reports-1',
+            text: 'Gather data from all marketing platforms',
+            completed: false,
+          },
+          {
+            id: 'recurring-reports-2',
+            text: 'Analyze key metrics and trends',
+            completed: false,
+          },
+          {
+            id: 'recurring-reports-3',
+            text: 'Create visual dashboard and charts',
+            completed: false,
+          },
+          {
+            id: 'recurring-reports-4',
+            text: 'Write executive summary and insights',
+            completed: false,
+          },
+          {
+            id: 'recurring-reports-5',
+            text: 'Develop recommendations for next month',
+            completed: false,
+          },
+          {
+            id: 'recurring-reports-6',
+            text: 'Schedule and conduct report review call',
+            completed: false,
+          },
+        ],
+        tips: [
+          'Focus on metrics that tie directly to business outcomes',
+          'Include both successes and areas for improvement',
+          'Provide actionable recommendations, not just data',
+          'Use consistent formatting for easy month-to-month comparison',
+        ],
+      },
+      {
+        id: 'recurring-reviews',
+        text: 'Review Response Management',
+        completed: false,
+        isRecurring: true,
+        frequency: 'weekly',
+        autoReset: true,
+        templateId: 'review-management',
+        description: 'Monitor and respond to online reviews across all platforms.',
+        subTasks: [
+          {
+            id: 'recurring-reviews-1',
+            text: 'Check for new reviews on Google, Yelp, Facebook',
+            completed: false,
+          },
+          {
+            id: 'recurring-reviews-2',
+            text: 'Respond professionally to all new reviews',
+            completed: false,
+          },
+          {
+            id: 'recurring-reviews-3',
+            text: 'Flag any concerning feedback for client attention',
+            completed: false,
+          },
+          {
+            id: 'recurring-reviews-4',
+            text: 'Track review sentiment and volume trends',
+            completed: false,
+          },
+          {
+            id: 'recurring-reviews-5',
+            text: 'Share positive reviews with client team for morale',
+            completed: false,
+          },
+        ],
+        tips: [
+          'Respond to all reviews within 24 hours when possible',
+          'Thank positive reviewers and address negative feedback constructively',
+          'Use responses as marketing opportunities for potential customers',
+          'Monitor competitor reviews for industry insights',
+        ],
+      },
+      {
+        id: 'recurring-social',
+        text: 'Social Media Content Calendar',
+        completed: false,
+        isRecurring: true,
+        frequency: 'weekly',
+        autoReset: true,
+        templateId: 'social-content',
+        description: 'Plan, create, and schedule social media content across all platforms.',
+        subTasks: [
+          {
+            id: 'recurring-social-1',
+            text: 'Plan content themes for the upcoming week',
+            completed: false,
+          },
+          {
+            id: 'recurring-social-2',
+            text: 'Create or curate visual content (photos, videos)',
+            completed: false,
+          },
+          {
+            id: 'recurring-social-3',
+            text: 'Write engaging captions and copy',
+            completed: false,
+          },
+          {
+            id: 'recurring-social-4',
+            text: 'Schedule posts across all platforms',
+            completed: false,
+          },
+          {
+            id: 'recurring-social-5',
+            text: 'Monitor engagement and respond to comments',
+            completed: false,
+          },
+        ],
+        tips: [
+          'Maintain consistent posting schedule for each platform',
+          'User-generated content performs better than stock photos',
+          'Engage with followers and local community accounts',
+          'Track which content types perform best for your audience',
+        ],
+      },
+    ],
+  },
+];
+
+// Recurring Task Templates
+export const recurringTaskTemplates: RecurringTaskTemplate[] = [
+  {
+    id: 'newsletter-campaign',
+    name: 'Email Newsletter Campaign',
+    description: 'Regular email marketing to engage customers and drive repeat business',
+    defaultFrequency: 'bi-weekly',
+    category: 'marketing',
+    priority: 'high',
+    isOptional: false,
+    clientTypeRelevance: ['Quick Service Restaurant', 'Fast Casual', 'Fine Dining', 'Casual Dining', 'Coffee Shop'],
+    conditions: {
+      requiresEmailList: true,
+    },
+    seasonalAdjustments: {
+      holiday: {
+        skipDates: ['2023-12-25', '2024-01-01'],
+        adjustFrequency: 'weekly'
+      },
+      busySeason: {
+        increaseFrequency: true,
+        months: [11, 12, 5, 6] // Nov, Dec, May, June
+      }
+    }
+  },
+  {
+    id: 'digital-audit',
+    name: 'Digital Presence Audit',
+    description: 'Comprehensive review of all digital touchpoints and online presence',
+    defaultFrequency: 'monthly',
+    category: 'operations',
+    priority: 'medium',
+    isOptional: false,
+    clientTypeRelevance: ['Quick Service Restaurant', 'Fast Casual', 'Fine Dining', 'Casual Dining', 'Coffee Shop', 'Bar & Grill'],
+  },
+  {
+    id: 'gmb-posts',
+    name: 'Google Business Profile Posts',
+    description: 'Regular posting to maintain Google Business Profile visibility',
+    defaultFrequency: 'weekly',
+    category: 'marketing',
+    priority: 'high',
+    isOptional: false,
+    clientTypeRelevance: ['Quick Service Restaurant', 'Fast Casual', 'Fine Dining', 'Casual Dining', 'Coffee Shop', 'Bar & Grill'],
+  },
+  {
+    id: 'performance-report',
+    name: 'Client Performance Report',
+    description: 'Monthly analysis of marketing performance and strategic recommendations',
+    defaultFrequency: 'monthly',
+    category: 'reporting',
+    priority: 'high',
+    isOptional: false,
+    clientTypeRelevance: ['Quick Service Restaurant', 'Fast Casual', 'Fine Dining', 'Casual Dining', 'Coffee Shop', 'Bar & Grill'],
+  },
+  {
+    id: 'review-management',
+    name: 'Review Response Management',
+    description: 'Monitor and respond to online reviews across all platforms',
+    defaultFrequency: 'weekly',
+    category: 'client-management',
+    priority: 'high',
+    isOptional: false,
+    clientTypeRelevance: ['Quick Service Restaurant', 'Fast Casual', 'Fine Dining', 'Casual Dining', 'Coffee Shop', 'Bar & Grill'],
+  },
+  {
+    id: 'social-content',
+    name: 'Social Media Content Calendar',
+    description: 'Plan and schedule social media content across all platforms',
+    defaultFrequency: 'weekly',
+    category: 'marketing',
+    priority: 'medium',
+    isOptional: true,
+    clientTypeRelevance: ['Quick Service Restaurant', 'Fast Casual', 'Fine Dining', 'Casual Dining', 'Coffee Shop', 'Bar & Grill'],
+    conditions: {
+      minimumRevenue: 25000 // Only for clients with sufficient budget
+    }
   },
 ]; 
