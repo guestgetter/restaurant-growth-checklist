@@ -4,7 +4,7 @@ import React from 'react';
 import { Eye, MousePointer, Phone, Users, Heart } from 'lucide-react';
 
 interface FunnelData {
-  awareness: {
+  attention: {
     value: number;
     label: string;
     sources: Array<{ name: string; value: number; color: string }>;
@@ -14,12 +14,12 @@ interface FunnelData {
     label: string;
     sources: Array<{ name: string; value: number; color: string }>;
   };
-  consideration: {
+  desire: {
     value: number;
     label: string;
     sources: Array<{ name: string; value: number; color: string }>;
   };
-  conversion: {
+  meaningfulAction: {
     value: number;
     label: string;
     sources: Array<{ name: string; value: number; color: string }>;
@@ -49,11 +49,11 @@ export default function RestaurantFunnelVisualization({
   repeatCustomerRate 
 }: RestaurantFunnelProps) {
   
-  // Calculate funnel metrics from existing data
+  // Calculate funnel metrics from existing data using AIDA framework
   const funnelData: FunnelData = {
-    awareness: {
+    attention: {
       value: googleAdsData.impressions + metaAdsData.impressions + searchData.impressions,
-      label: 'Total Impressions',
+      label: 'Total Impressions & Views',
       sources: [
         { name: 'Google Ads', value: googleAdsData.impressions, color: 'bg-blue-500' },
         { name: 'Meta Ads', value: metaAdsData.impressions, color: 'bg-blue-600' },
@@ -62,15 +62,15 @@ export default function RestaurantFunnelVisualization({
     },
     interest: {
       value: googleAdsData.clicks + metaAdsData.clicks + searchData.clicks,
-      label: 'Total Clicks',
+      label: 'Clicks & Engagement',
       sources: [
         { name: 'Google Ads', value: googleAdsData.clicks, color: 'bg-green-500' },
         { name: 'Meta Ads', value: metaAdsData.clicks, color: 'bg-green-600' },
         { name: 'Search', value: searchData.clicks, color: 'bg-green-400' }
       ]
     },
-    consideration: {
-      value: Math.round((googleAdsData.clicks + metaAdsData.clicks) * 0.65), // Estimated consideration rate
+    desire: {
+      value: Math.round((googleAdsData.clicks + metaAdsData.clicks) * 0.65), // Estimated desire actions
       label: 'Menu Views & Location Lookups',
       sources: [
         { name: 'Menu Views', value: Math.round(googleAdsData.clicks * 0.4), color: 'bg-yellow-500' },
@@ -78,13 +78,13 @@ export default function RestaurantFunnelVisualization({
         { name: 'Reviews Read', value: Math.round(searchData.clicks * 0.2), color: 'bg-yellow-400' }
       ]
     },
-    conversion: {
+    meaningfulAction: {
       value: googleAdsData.conversions + metaAdsData.conversions + Math.round(searchData.clicks * 0.08),
-      label: 'Conversions (Reservations, Orders, Calls)',
+      label: 'Reservations, Orders & Inquiries',
       sources: [
-        { name: 'Google Ads', value: googleAdsData.conversions, color: 'bg-orange-500' },
-        { name: 'Meta Ads', value: metaAdsData.conversions, color: 'bg-orange-600' },
-        { name: 'Direct/Search', value: Math.round(searchData.clicks * 0.08), color: 'bg-orange-400' }
+        { name: 'Online Reservations', value: googleAdsData.conversions, color: 'bg-orange-500' },
+        { name: 'Phone Calls', value: metaAdsData.conversions, color: 'bg-orange-600' },
+        { name: 'Walk-ins', value: Math.round(searchData.clicks * 0.08), color: 'bg-orange-400' }
       ]
     },
     retention: {
@@ -94,10 +94,10 @@ export default function RestaurantFunnelVisualization({
     }
   };
 
-  // Calculate conversion rates between stages
-  const interestRate = ((funnelData.interest.value / funnelData.awareness.value) * 100).toFixed(1);
-  const considerationRate = ((funnelData.consideration.value / funnelData.interest.value) * 100).toFixed(1);
-  const conversionRate = ((funnelData.conversion.value / funnelData.consideration.value) * 100).toFixed(1);
+  // Calculate conversion rates between AIDA stages
+  const interestRate = ((funnelData.interest.value / funnelData.attention.value) * 100).toFixed(1);
+  const desireRate = ((funnelData.desire.value / funnelData.interest.value) * 100).toFixed(1);
+  const actionRate = ((funnelData.meaningfulAction.value / funnelData.desire.value) * 100).toFixed(1);
 
   const FunnelStage = ({ 
     stage, 
@@ -153,14 +153,14 @@ export default function RestaurantFunnelVisualization({
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <div className="flex items-center gap-3 mb-6">
         <Users className="h-6 w-6 text-blue-600" />
-        <h2 className="text-xl font-semibold text-gray-900">Customer Journey Funnel</h2>
-        <span className="text-sm text-gray-500">Last 30 Days</span>
+        <h2 className="text-xl font-semibold text-gray-900">AIDA Marketing Funnel</h2>
+        <span className="text-sm text-gray-500">Attention → Interest → Desire → Action</span>
       </div>
 
       <div className="flex flex-col items-center space-y-4">
-        {/* Awareness Stage */}
+        {/* Attention Stage */}
         <FunnelStage 
-          stage={funnelData.awareness} 
+          stage={funnelData.attention} 
           icon={Eye} 
           width={400}
         />
@@ -179,23 +179,23 @@ export default function RestaurantFunnelVisualization({
         {/* Arrow */}
         <div className="text-gray-400">↓</div>
         
-        {/* Consideration Stage */}
+        {/* Desire Stage */}
         <FunnelStage 
-          stage={funnelData.consideration} 
+          stage={funnelData.desire} 
           icon={Phone} 
           width={240}
-          conversionRate={considerationRate}
+          conversionRate={desireRate}
         />
         
         {/* Arrow */}
         <div className="text-gray-400">↓</div>
         
-        {/* Conversion Stage */}
+        {/* Meaningful Action Stage */}
         <FunnelStage 
-          stage={funnelData.conversion} 
+          stage={funnelData.meaningfulAction} 
           icon={Users} 
           width={160}
-          conversionRate={conversionRate}
+          conversionRate={actionRate}
         />
         
         {/* Arrow */}
@@ -222,11 +222,11 @@ export default function RestaurantFunnelVisualization({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
           <div className="text-center">
             <p className="font-semibold text-blue-600">{interestRate}%</p>
-            <p className="text-gray-600">Awareness → Interest</p>
+            <p className="text-gray-600">Attention → Interest</p>
           </div>
           <div className="text-center">
-            <p className="font-semibold text-green-600">{conversionRate}%</p>
-            <p className="text-gray-600">Consideration → Conversion</p>
+            <p className="font-semibold text-green-600">{actionRate}%</p>
+            <p className="text-gray-600">Desire → Action</p>
           </div>
           <div className="text-center">
             <p className="font-semibold text-purple-600">{repeatCustomerRate}%</p>

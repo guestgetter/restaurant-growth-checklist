@@ -28,6 +28,7 @@ import {
   TrendingDown,
   Minus
 } from 'lucide-react';
+import DashboardFunnel from '../../components/DashboardFunnel';
 
 interface MetricData {
   value: string | number;
@@ -591,6 +592,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* AIDA Marketing Funnel */}
+      <DashboardFunnel secondaryMetrics={secondaryMetrics} />
 
     </div>
   );
