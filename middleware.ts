@@ -54,5 +54,6 @@ export const config = {
     '/client/:path*',
     '/reports/:path*',
     '/settings/:path*'
+    // Note: /client-call is intentionally NOT protected for easy client access
   ]
 } 
