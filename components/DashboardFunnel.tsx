@@ -19,6 +19,7 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set());
   const [editingStage, setEditingStage] = useState<string | null>(null);
   const [editingSource, setEditingSource] = useState<{stageKey: string, sourceIndex: number} | null>(null);
+  const [editingSourceName, setEditingSourceName] = useState<{stageKey: string, sourceIndex: number} | null>(null);
   
   // Initialize funnel data with persistence capability
   const [funnelData, setFunnelData] = useState<Record<string, FunnelStageData>>({
@@ -32,6 +33,17 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
       lastUpdated: new Date().toISOString().split('T')[0],
       dataSource: 'manual',
       notes: 'Total reach across all marketing channels'
+    },
+    interest: {
+      value: 1210,
+      sources: [
+        { name: 'Ad Clicks', value: 680, color: 'bg-purple-500' },
+        { name: 'Menu Views', value: 350, color: 'bg-purple-600' },
+        { name: 'Location Clicks', value: 180, color: 'bg-purple-400' }
+      ],
+      lastUpdated: new Date().toISOString().split('T')[0],
+      dataSource: 'manual',
+      notes: 'Clicks, menu views, and engagement actions'
     },
     optIns: {
       value: 485,
@@ -70,6 +82,17 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
       textColor: 'text-blue-600'
     },
     {
+      key: 'interest',
+      name: 'Interest',
+      icon: MousePointer,
+      subtitle: 'Clicks & Engagement',
+      description: 'Clicks, menu views, location lookups, and other engagement actions',
+      width: 340,
+      color: 'from-purple-100 to-purple-200',
+      borderColor: 'border-purple-300',
+      textColor: 'text-purple-600'
+    },
+    {
       key: 'optIns', 
       name: 'Opt-ins',
       icon: Mail,
@@ -86,7 +109,7 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
       icon: Users,
       subtitle: 'Offers Redeemed',
       description: 'Actual offer redemptions and revenue-generating actions',
-      width: 160,
+      width: 200,
       color: 'from-orange-100 to-orange-200',
       borderColor: 'border-orange-300',
       textColor: 'text-orange-600'
@@ -95,7 +118,8 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
 
   // Calculate conversion rates
   const conversionRates = {
-    impressionsToOptIns: ((funnelData.optIns.value / funnelData.impressions.value) * 100).toFixed(1),
+    impressionsToInterest: ((funnelData.interest.value / funnelData.impressions.value) * 100).toFixed(1),
+    interestToOptIns: ((funnelData.optIns.value / funnelData.interest.value) * 100).toFixed(1),
     optInsToRedemptions: ((funnelData.redemptions.value / funnelData.optIns.value) * 100).toFixed(1)
   };
 
@@ -286,6 +310,69 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
     }
   };
 
+  const handleSourceNameEdit = async (stageKey: string, sourceIndex: number, newName: string) => {
+    // Validate input
+    if (!newName || newName.trim() === '') {
+      setError('Source name cannot be empty');
+      return;
+    }
+
+    const updatedSources = [...funnelData[stageKey].sources];
+    updatedSources[sourceIndex] = {
+      ...updatedSources[sourceIndex],
+      name: newName.trim()
+    };
+
+    const updatedData = {
+      ...funnelData,
+      [stageKey]: {
+        ...funnelData[stageKey],
+        sources: updatedSources,
+        lastUpdated: new Date().toISOString().split('T')[0],
+        dataSource: 'manual' as const,
+        notes: `Source names updated - flexible tracking`
+      }
+    };
+
+    setFunnelData(updatedData as Record<string, FunnelStageData>);
+    setEditingSourceName(null);
+    setSaveStatus('saving');
+    setError(null);
+    
+    // Save to database
+    try {
+      const response = await fetch('/api/funnel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ funnelData: updatedData })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setSaveStatus('saved');
+        if (result.fallback) {
+          setError('⚠️ Data updated locally but not saved to database yet');
+        } else {
+          setTimeout(() => setSaveStatus('idle'), 2000);
+        }
+      } else {
+        throw new Error(result.message || 'Failed to save funnel data');
+      }
+    } catch (error) {
+      console.error('❌ Failed to save funnel data:', error);
+      setSaveStatus('error');
+      setError('Failed to save data. Changes are temporary.');
+      
+      try {
+        localStorage.setItem('dashboardFunnelData', JSON.stringify(updatedData));
+        setError('Failed to save to database. Data saved locally as backup.');
+      } catch (localError) {
+        setError('Failed to save data. Please try again.');
+      }
+    }
+  };
+
   const getDataSourceIcon = (source: string) => {
     switch (source) {
       case 'api': return <Database className="text-green-600" size={12} />;
@@ -370,11 +457,32 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
               <h4 className="font-medium text-gray-900 text-sm">Source Breakdown:</h4>
               {data.sources.map((source, index) => {
                 const isEditingThisSource = editingSource?.stageKey === stage.key && editingSource?.sourceIndex === index;
+                const isEditingThisSourceName = editingSourceName?.stageKey === stage.key && editingSourceName?.sourceIndex === index;
                 return (
                   <div key={index} className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
                       <div className={`w-3 h-3 rounded-full ${source.color}`}></div>
-                      <span className="text-gray-600">{source.name}</span>
+                      {isEditingThisSourceName && isDataEntryMode ? (
+                        <EditableSourceName 
+                          value={source.name}
+                          onSave={(newName) => handleSourceNameEdit(stage.key, index, newName)}
+                          onCancel={() => setEditingSourceName(null)}
+                        />
+                      ) : (
+                        <span 
+                          className={`text-gray-600 ${
+                            isDataEntryMode ? 'cursor-pointer hover:bg-blue-100 rounded px-1' : ''
+                          }`}
+                          onClick={() => {
+                            if (isDataEntryMode) {
+                              setEditingSourceName({stageKey: stage.key, sourceIndex: index});
+                            }
+                          }}
+                          title={isDataEntryMode ? "Click to edit source name" : ""}
+                        >
+                          {source.name}
+                        </span>
+                      )}
                     </div>
                     {isEditingThisSource && isDataEntryMode ? (
                       <EditableSourceValue 
@@ -392,6 +500,7 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
                             setEditingSource({stageKey: stage.key, sourceIndex: index});
                           }
                         }}
+                        title={isDataEntryMode ? "Click to edit source value" : ""}
                       >
                         {source.value.toLocaleString()}
                       </span>
@@ -448,7 +557,7 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
           Marketing Performance Funnel
         </h2>
         <span className="text-sm text-slate-500 dark:text-slate-400">
-          Impressions → Opt-ins → Redemptions
+          Impressions → Interest → Opt-ins → Redemptions
         </span>
         
         {/* Save Status Indicator */}
@@ -501,7 +610,8 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
                stage={stage}
                data={funnelData[stage.key]}
                conversionRate={index === 0 ? undefined : 
-                              index === 1 ? conversionRates.impressionsToOptIns :
+                              index === 1 ? conversionRates.impressionsToInterest :
+                              index === 2 ? conversionRates.interestToOptIns :
                               conversionRates.optInsToRedemptions}
              />
             {index < stages.length - 1 && (
@@ -528,10 +638,14 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
       {/* Key Insights */}
       <div className="mt-8 p-4 bg-gray-50 rounded-lg">
         <h4 className="font-medium text-gray-900 mb-3">Conversion Insights:</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
           <div className="text-center">
-            <p className="font-semibold text-blue-600">{conversionRates.impressionsToOptIns}%</p>
-            <p className="text-gray-600">Impressions → Opt-ins</p>
+            <p className="font-semibold text-blue-600">{conversionRates.impressionsToInterest}%</p>
+            <p className="text-gray-600">Impressions → Interest</p>
+          </div>
+          <div className="text-center">
+            <p className="font-semibold text-purple-600">{conversionRates.interestToOptIns}%</p>
+            <p className="text-gray-600">Interest → Opt-ins</p>
           </div>
           <div className="text-center">
             <p className="font-semibold text-orange-600">{conversionRates.optInsToRedemptions}%</p>
@@ -616,6 +730,44 @@ function EditableSourceValue({
       <button
         onClick={() => onSave(editValue)}
         className="px-1 py-0.5 bg-green-600 text-white rounded text-xs hover:bg-green-700"
+      >
+        <Save size={10} />
+      </button>
+      <button
+        onClick={onCancel}
+        className="px-1 py-0.5 bg-gray-600 text-white rounded text-xs hover:bg-gray-700"
+      >
+        <X size={10} />
+      </button>
+    </div>
+  );
+}
+
+// Editable Source Name Component for flexible source tracking
+function EditableSourceName({ 
+  value, 
+  onSave, 
+  onCancel 
+}: { 
+  value: string; 
+  onSave: (name: string) => void; 
+  onCancel: () => void; 
+}) {
+  const [editValue, setEditValue] = useState(value);
+
+  return (
+    <div className="flex items-center gap-1">
+      <input
+        type="text"
+        value={editValue}
+        onChange={(e) => setEditValue(e.target.value)}
+        className="w-32 text-sm text-gray-600 bg-white border border-blue-300 rounded px-1 py-0.5"
+        autoFocus
+        placeholder="Source name"
+      />
+      <button
+        onClick={() => onSave(editValue)}
+        className="px-1 py-0.5 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
       >
         <Save size={10} />
       </button>

@@ -12,6 +12,7 @@ interface FunnelStageData {
 
 interface FunnelData {
   impressions: FunnelStageData;
+  interest: FunnelStageData;
   optIns: FunnelStageData;
   redemptions: FunnelStageData;
 }
@@ -28,6 +29,17 @@ const getDefaultFunnelData = (): FunnelData => ({
     lastUpdated: new Date().toISOString().split('T')[0],
     dataSource: 'manual',
     notes: 'Total reach across all marketing channels'
+  },
+  interest: {
+    value: 1210,
+    sources: [
+      { name: 'Ad Clicks', value: 680, color: 'bg-purple-500' },
+      { name: 'Menu Views', value: 350, color: 'bg-purple-600' },
+      { name: 'Location Clicks', value: 180, color: 'bg-purple-400' }
+    ],
+    lastUpdated: new Date().toISOString().split('T')[0],
+    dataSource: 'manual',
+    notes: 'Clicks, menu views, and engagement actions'
   },
   optIns: {
     value: 485,
@@ -57,7 +69,7 @@ const getDefaultFunnelData = (): FunnelData => ({
 const validateFunnelData = (data: any): data is FunnelData => {
   if (!data || typeof data !== 'object') return false;
   
-  const requiredStages = ['impressions', 'optIns', 'redemptions'];
+  const requiredStages = ['impressions', 'interest', 'optIns', 'redemptions'];
   return requiredStages.every(stage => {
     const stageData = data[stage];
     return stageData && 
