@@ -53,6 +53,27 @@ export default function DashboardPage() {
         const response = await fetch('/api/metrics');
         if (response.ok) {
           const data = await response.json();
+          
+          // Sync Total Reach with funnel impressions data for consistency
+          try {
+            const funnelResponse = await fetch('/api/funnel');
+            if (funnelResponse.ok) {
+              const funnelData = await funnelResponse.json();
+              if (funnelData.impressions && data.totalReach) {
+                // Calculate impressions total from sources to ensure accuracy
+                const impressionsTotal = funnelData.impressions.sources 
+                  ? funnelData.impressions.sources.reduce((sum: number, source: any) => sum + source.value, 0)
+                  : funnelData.impressions.value;
+                
+                data.totalReach.value = impressionsTotal.toLocaleString();
+                data.totalReach.notes = 'Synced with funnel impressions data';
+                console.log(`🔗 Synced Total Reach with funnel: ${impressionsTotal.toLocaleString()}`);
+              }
+            }
+          } catch (syncError) {
+            console.log('Could not sync with funnel data, using stored metrics');
+          }
+          
           setPrimaryMetricsData(data);
         } else {
           throw new Error(`Failed to load metrics: ${response.status}`);

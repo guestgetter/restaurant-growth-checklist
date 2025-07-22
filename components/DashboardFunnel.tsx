@@ -123,9 +123,25 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
         const response = await fetch('/api/funnel');
         if (response.ok) {
           const data = await response.json();
+          
+          // Data consistency check: ensure totals match source sums
+          const correctedData = { ...data };
+          Object.keys(correctedData).forEach(stageKey => {
+            const stage = correctedData[stageKey];
+            if (stage.sources && Array.isArray(stage.sources)) {
+              const calculatedTotal = stage.sources.reduce((sum: number, source: any) => sum + source.value, 0);
+              if (calculatedTotal !== stage.value) {
+                console.log(`🔧 Fixing ${stageKey}: sources total ${calculatedTotal} vs stored value ${stage.value}`);
+                stage.value = calculatedTotal;
+                stage.notes = `Auto-corrected total from sources (${calculatedTotal.toLocaleString()})`;
+                stage.lastUpdated = new Date().toISOString().split('T')[0];
+              }
+            }
+          });
+          
           setFunnelData(prev => ({
             ...prev,
-            ...data
+            ...correctedData
           }));
         } else {
           throw new Error(`Failed to load data: ${response.status}`);
