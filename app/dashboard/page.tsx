@@ -54,9 +54,10 @@ export default function DashboardPage() {
         if (response.ok) {
           const data = await response.json();
           
-
+          // Filter out totalReach completely - we don't want this metric
+          const { totalReach, ...filteredData } = data;
           
-          setPrimaryMetricsData(data);
+          setPrimaryMetricsData(filteredData);
         } else {
           throw new Error(`Failed to load metrics: ${response.status}`);
         }
@@ -108,6 +109,12 @@ export default function DashboardPage() {
 
   // Manual data entry handlers with API persistence
   const handleMetricEdit = async (metricKey: string, newValue: string, notes?: string, timePeriod?: string) => {
+    // Don't allow editing totalReach - remove it completely
+    if (metricKey === 'totalReach') {
+      console.log('Ignoring totalReach edit - this metric should not exist');
+      return;
+    }
+    
     // Validate input
     if (!newValue || newValue.trim() === '') {
       setError('Value cannot be empty');
@@ -132,12 +139,13 @@ export default function DashboardPage() {
     setSaveStatus('saving');
     setError(null);
     
-    // Save to database
+    // Save to database (filter out totalReach)
     try {
+      const { totalReach, ...dataToSave } = updatedData;
       const response = await fetch('/api/metrics', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ metricsData: updatedData })
+        body: JSON.stringify({ metricsData: dataToSave })
       });
 
       const result = await response.json();
@@ -352,8 +360,8 @@ export default function DashboardPage() {
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {Object.entries(primaryMetricsData).map(([key, metric]) => {
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {Object.entries(primaryMetricsData).filter(([key]) => key !== 'totalReach').map(([key, metric]) => {
             const isEditing = editingMetric === key;
             
             return (
