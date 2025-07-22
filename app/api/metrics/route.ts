@@ -30,21 +30,14 @@ const getDefaultMetrics = (): Record<string, MetricData> => ({
     timePeriod: 'Last 30 Days',
     notes: 'New email subscribers this period'
   },
-  totalReach: { 
-    value: '24,500', 
-    trend: 'up',
-    lastUpdated: new Date().toISOString().split('T')[0],
-    dataSource: 'api',
-    timePeriod: 'Last 30 Days',
-    notes: 'Total impressions across all channels'
-  }
+
 });
 
 // Validation function  
 const validateMetrics = (data: any): data is Record<string, MetricData> => {
   if (!data || typeof data !== 'object') return false;
   
-  const requiredMetrics = ['gac', 'emailOptIns', 'totalReach'];
+  const requiredMetrics = ['gac', 'emailOptIns'];
   return requiredMetrics.every(metric => {
     const metricData = data[metric];
     return metricData && 

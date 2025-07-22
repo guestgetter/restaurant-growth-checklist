@@ -54,25 +54,7 @@ export default function DashboardPage() {
         if (response.ok) {
           const data = await response.json();
           
-          // Sync Total Reach with funnel impressions data for consistency
-          try {
-            const funnelResponse = await fetch('/api/funnel');
-            if (funnelResponse.ok) {
-              const funnelData = await funnelResponse.json();
-              if (funnelData.impressions && data.totalReach) {
-                // Calculate impressions total from sources to ensure accuracy
-                const impressionsTotal = funnelData.impressions.sources 
-                  ? funnelData.impressions.sources.reduce((sum: number, source: any) => sum + source.value, 0)
-                  : funnelData.impressions.value;
-                
-                data.totalReach.value = impressionsTotal.toLocaleString();
-                data.totalReach.notes = 'Synced with funnel impressions data';
-                console.log(`🔗 Synced Total Reach with funnel: ${impressionsTotal.toLocaleString()}`);
-              }
-            }
-          } catch (syncError) {
-            console.log('Could not sync with funnel data, using stored metrics');
-          }
+
           
           setPrimaryMetricsData(data);
         } else {
@@ -99,14 +81,7 @@ export default function DashboardPage() {
             timePeriod: 'Last 30 Days',
             notes: 'New email subscribers this period'
           },
-          totalReach: { 
-            value: '24,500', 
-            trend: 'up',
-            lastUpdated: new Date().toISOString().split('T')[0],
-            dataSource: 'api',
-            timePeriod: 'Last 30 Days',
-            notes: 'Total impressions across all channels'
-          }
+
         });
       } finally {
         setIsLoading(false);
@@ -213,7 +188,7 @@ export default function DashboardPage() {
     switch (key) {
       case 'gac': return <DollarSign className="text-blue-600" size={20} />;
       case 'emailOptIns': return <Mail className="text-green-600" size={20} />;
-      case 'totalReach': return <Eye className="text-purple-600" size={20} />;
+
       default: return <BarChart3 className="text-gray-600" size={20} />;
     }
   };
@@ -222,7 +197,7 @@ export default function DashboardPage() {
     switch (key) {
       case 'gac': return 'Guest Acquisition Cost';
       case 'emailOptIns': return 'Email Opt-ins';
-      case 'totalReach': return 'Total Reach';
+
       default: return key;
     }
   };
