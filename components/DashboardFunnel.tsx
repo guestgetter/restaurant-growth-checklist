@@ -132,10 +132,17 @@ export default function DashboardFunnel({ secondaryMetrics, isDataEntryMode }: D
     setExpandedStages(newExpanded);
   };
 
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
   // Load funnel data on component mount
   useEffect(() => {
     const loadFunnelData = async () => {
       try {
+        setIsLoading(true);
+        setError(null);
+        
         const response = await fetch('/api/funnel');
         if (response.ok) {
           const data = await response.json();
@@ -143,9 +150,14 @@ export default function DashboardFunnel({ secondaryMetrics, isDataEntryMode }: D
             ...prev,
             ...data
           }));
+        } else {
+          throw new Error(`Failed to load data: ${response.status}`);
         }
       } catch (error) {
         console.error('Failed to load funnel data:', error);
+        setError('Unable to load funnel data. Using defaults.');
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -153,19 +165,29 @@ export default function DashboardFunnel({ secondaryMetrics, isDataEntryMode }: D
   }, []);
 
   const handleStageEdit = async (stageKey: string, newValue: string, notes?: string) => {
+    // Validate input
+    const numericValue = parseInt(newValue.replace(/[^\d]/g, '')) || 0;
+    if (numericValue < 0) {
+      setError('Value cannot be negative');
+      return;
+    }
+
     const updatedData = {
       ...funnelData,
       [stageKey]: {
         ...funnelData[stageKey],
-        value: parseInt(newValue.replace(/[^\d]/g, '')) || 0,
+        value: numericValue,
         lastUpdated: new Date().toISOString().split('T')[0],
-        dataSource: 'manual',
+        dataSource: 'manual' as const,
         notes: notes || `Updated manually on ${new Date().toLocaleDateString()}`
       }
     };
 
+    // Update UI immediately for better UX
     setFunnelData(updatedData as Record<string, FunnelStageData>);
     setEditingStage(null);
+    setSaveStatus('saving');
+    setError(null);
     
     // Save to database
     try {
@@ -175,15 +197,31 @@ export default function DashboardFunnel({ secondaryMetrics, isDataEntryMode }: D
         body: JSON.stringify({ funnelData: updatedData })
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to save funnel data');
+      const result = await response.json();
+
+      if (response.ok) {
+        setSaveStatus('saved');
+        if (result.fallback) {
+          setError('⚠️ Data updated locally but not saved to database yet');
+        } else {
+          // Clear any previous errors
+          setTimeout(() => setSaveStatus('idle'), 2000);
+        }
+      } else {
+        throw new Error(result.message || 'Failed to save funnel data');
       }
-      
-      console.log('✅ Funnel data saved successfully');
     } catch (error) {
       console.error('❌ Failed to save funnel data:', error);
-      // Fallback to localStorage
-      localStorage.setItem('dashboardFunnelData', JSON.stringify(updatedData));
+      setSaveStatus('error');
+      setError('Failed to save data. Changes are temporary.');
+      
+      // Fallback to localStorage for recovery
+      try {
+        localStorage.setItem('dashboardFunnelData', JSON.stringify(updatedData));
+        setError('Failed to save to database. Data saved locally as backup.');
+      } catch (localError) {
+        setError('Failed to save data. Please try again.');
+      }
     }
   };
 
@@ -295,6 +333,19 @@ export default function DashboardFunnel({ secondaryMetrics, isDataEntryMode }: D
     );
   };
 
+  if (isLoading) {
+    return (
+      <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-slate-600 dark:text-slate-400">Loading funnel data...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
       <div className="flex items-center gap-3 mb-6">
@@ -305,7 +356,49 @@ export default function DashboardFunnel({ secondaryMetrics, isDataEntryMode }: D
         <span className="text-sm text-slate-500 dark:text-slate-400">
           Attention → Interest → Desire → Action
         </span>
+        
+        {/* Save Status Indicator */}
+        {saveStatus !== 'idle' && (
+          <div className="flex items-center gap-2 ml-auto">
+            {saveStatus === 'saving' && (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                <span className="text-sm text-blue-600">Saving...</span>
+              </>
+            )}
+            {saveStatus === 'saved' && (
+              <>
+                <div className="h-4 w-4 rounded-full bg-green-500 flex items-center justify-center">
+                  <span className="text-white text-xs">✓</span>
+                </div>
+                <span className="text-sm text-green-600">Saved</span>
+              </>
+            )}
+            {saveStatus === 'error' && (
+              <>
+                <X className="h-4 w-4 text-red-500" />
+                <span className="text-sm text-red-600">Error</span>
+              </>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="flex items-center gap-2">
+            <span className="text-yellow-600">⚠️</span>
+            <span className="text-sm text-yellow-800">{error}</span>
+            <button 
+              onClick={() => setError(null)}
+              className="ml-auto text-yellow-600 hover:text-yellow-800"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col items-center space-y-4">
         {stages.map((stage, index) => (
