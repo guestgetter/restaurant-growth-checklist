@@ -24,7 +24,7 @@ import DashboardFunnel from '../../components/DashboardFunnel';
 
 interface MetricData {
   value: string | number;
-  change: number;
+  change?: number;
   trend: 'up' | 'down' | 'stable';
   lastUpdated?: string;
   dataSource: 'api' | 'manual' | 'imported';
@@ -40,7 +40,7 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
-  // Primary Metrics Data - Loaded from API
+  // Current Marketing Metrics - What we have today
   const [primaryMetricsData, setPrimaryMetricsData] = useState<Record<string, MetricData>>({});
 
   // Load metrics data on component mount
@@ -60,43 +60,31 @@ export default function DashboardPage() {
       } catch (error) {
         console.error('Failed to load metrics data:', error);
         setError('Unable to load metrics data. Using defaults.');
-        // Set fallback data
+        // Set fallback data - focus on current tools
         setPrimaryMetricsData({
           gac: { 
             value: '$12.45', 
-            change: -8.2, 
-            trend: 'down',
+            trend: 'stable',
             lastUpdated: new Date().toISOString().split('T')[0],
             dataSource: 'api',
             timePeriod: 'Last 30 Days',
-            notes: 'Pulled from Google Ads API'
+            notes: 'Combined from Google Ads + Meta Ads'
           },
-          ltv: { 
-            value: '$156.78', 
-            change: 12.3, 
+          emailOptIns: { 
+            value: '485', 
             trend: 'up',
             lastUpdated: new Date().toISOString().split('T')[0],
             dataSource: 'manual',
             timePeriod: 'Last 30 Days',
-            notes: 'Calculated from POS data'
+            notes: 'New email subscribers this period'
           },
-          repeatRate: { 
-            value: '34.2%', 
-            change: 5.1, 
-            trend: 'up',
-            lastUpdated: new Date().toISOString().split('T')[0],
-            dataSource: 'imported',
-            timePeriod: 'Last 30 Days',
-            notes: 'Historical data imported'
-          },
-          avgSpend: { 
-            value: '$28.50', 
-            change: 2.8, 
+          totalReach: { 
+            value: '24,500', 
             trend: 'up',
             lastUpdated: new Date().toISOString().split('T')[0],
             dataSource: 'api',
             timePeriod: 'Last 30 Days',
-            notes: 'Real-time POS integration'
+            notes: 'Total impressions across all channels'
           }
         });
       } finally {
@@ -194,18 +182,17 @@ export default function DashboardPage() {
     }
   };
 
-  const getTrendIcon = (trend: string, change: number) => {
-    if (trend === 'up' || change > 0) return <TrendUp className="text-green-600" size={16} />;
-    if (trend === 'down' || change < 0) return <TrendingDown className="text-red-600" size={16} />;
+  const getTrendIcon = (trend: string, change?: number) => {
+    if (trend === 'up' || (change && change > 0)) return <TrendUp className="text-green-600" size={16} />;
+    if (trend === 'down' || (change && change < 0)) return <TrendingDown className="text-red-600" size={16} />;
     return <Minus className="text-gray-600" size={16} />;
   };
 
   const getMetricIcon = (key: string) => {
     switch (key) {
-      case 'gac': return <Users className="text-blue-600" size={20} />;
-      case 'ltv': return <DollarSign className="text-green-600" size={20} />;
-      case 'repeatRate': return <Repeat className="text-purple-600" size={20} />;
-      case 'avgSpend': return <TrendingUp className="text-orange-600" size={20} />;
+      case 'gac': return <DollarSign className="text-blue-600" size={20} />;
+      case 'emailOptIns': return <Mail className="text-green-600" size={20} />;
+      case 'totalReach': return <Eye className="text-purple-600" size={20} />;
       default: return <BarChart3 className="text-gray-600" size={20} />;
     }
   };
@@ -213,21 +200,13 @@ export default function DashboardPage() {
   const getMetricTitle = (key: string) => {
     switch (key) {
       case 'gac': return 'Guest Acquisition Cost';
-      case 'ltv': return 'Guest Lifetime Value';
-      case 'repeatRate': return 'Repeat Visit Rate';
-      case 'avgSpend': return 'Average Per Head Spend';
+      case 'emailOptIns': return 'Email Opt-ins';
+      case 'totalReach': return 'Total Reach';
       default: return key;
     }
   };
 
-  // Secondary Metrics Data - Clean and Simple
-  const secondaryMetrics: Record<string, MetricData> = {
-    paidReach: { value: '2.4K', change: 15.2, trend: 'up', dataSource: 'api', timePeriod: getCurrentTimePeriod() },
-    organicReach: { value: '1.8K', change: -3.4, trend: 'down', dataSource: 'manual', timePeriod: getCurrentTimePeriod() },
-    emailEngagement: { value: '24.1%', change: 6.7, trend: 'up', dataSource: 'api', timePeriod: getCurrentTimePeriod() },
-    searchRankings: { value: '#3', change: 12.0, trend: 'up', dataSource: 'manual', timePeriod: getCurrentTimePeriod() },
-    callsDirections: { value: '89', change: 21.3, trend: 'up', dataSource: 'imported', timePeriod: getCurrentTimePeriod() }
-  };
+
 
   // Show loading state
   if (isLoading) {
@@ -370,14 +349,14 @@ export default function DashboardPage() {
       <div className="space-y-4">
         <div className="flex items-center gap-2 mb-4">
           <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
-            Key Performance Metrics
+            Current Marketing Performance
           </h2>
           <span className="text-sm text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">
             {getCurrentTimePeriod()}
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {Object.entries(primaryMetricsData).map(([key, metric]) => {
             const isEditing = editingMetric === key;
             
@@ -418,12 +397,14 @@ export default function DashboardPage() {
                     </div>
                   )}
                   
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className={`font-medium ${metric.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {metric.change >= 0 ? '+' : ''}{metric.change}%
-                    </span>
-                    <span className="text-slate-500 dark:text-slate-400">vs previous period</span>
-                  </div>
+                  {metric.change !== undefined && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className={`font-medium ${metric.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {metric.change >= 0 ? '+' : ''}{metric.change}%
+                      </span>
+                      <span className="text-slate-500 dark:text-slate-400">vs previous period</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -455,49 +436,10 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Secondary Metrics Section */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 mb-4">
-          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">
-            Supporting Metrics
-          </h2>
-          <span className="text-sm text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">
-            {getCurrentTimePeriod()}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          {Object.entries(secondaryMetrics).map(([key, metric]) => (
-            <div key={key} className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-medium text-slate-800 dark:text-slate-100 text-sm capitalize">
-                  {key.replace(/([A-Z])/g, ' $1').trim()}
-                </h3>
-                {getTrendIcon(metric.trend, metric.change)}
-              </div>
-              
-              <div className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-1">
-                {metric.value}
-              </div>
-              
-              <div className="flex items-center justify-between text-xs">
-                <span className={`font-medium ${metric.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {metric.change >= 0 ? '+' : ''}{metric.change}%
-                </span>
-                <div className="flex items-center gap-1">
-                  {getDataSourceIcon(metric.dataSource)}
-                  <span className="text-slate-500 dark:text-slate-400">
-                    {metric.dataSource}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      
 
       {/* AIDA Marketing Funnel */}
-      <DashboardFunnel secondaryMetrics={secondaryMetrics} isDataEntryMode={isDataEntryMode} />
+      <DashboardFunnel isDataEntryMode={isDataEntryMode} />
 
     </div>
   );

@@ -4,7 +4,7 @@ import { prisma } from '../../../lib/prisma';
 // Type definitions for dashboard metrics
 interface MetricData {
   value: string | number;
-  change: number;
+  change?: number;
   trend: 'up' | 'down' | 'stable';
   lastUpdated?: string;
   dataSource: 'api' | 'manual' | 'imported';
@@ -12,51 +12,39 @@ interface MetricData {
   timePeriod?: string;
 }
 
-// Default metrics data
+// Default metrics data - focused on current tools
 const getDefaultMetrics = (): Record<string, MetricData> => ({
   gac: { 
     value: '$12.45', 
-    change: -8.2, 
-    trend: 'down',
+    trend: 'stable',
     lastUpdated: new Date().toISOString().split('T')[0],
     dataSource: 'api',
     timePeriod: 'Last 30 Days',
-    notes: 'Pulled from Google Ads API'
+    notes: 'Combined from Google Ads + Meta Ads'
   },
-  ltv: { 
-    value: '$156.78', 
-    change: 12.3, 
+  emailOptIns: { 
+    value: '485', 
     trend: 'up',
     lastUpdated: new Date().toISOString().split('T')[0],
     dataSource: 'manual',
     timePeriod: 'Last 30 Days',
-    notes: 'Calculated from POS data'
+    notes: 'New email subscribers this period'
   },
-  repeatRate: { 
-    value: '34.2%', 
-    change: 5.1, 
-    trend: 'up',
-    lastUpdated: new Date().toISOString().split('T')[0],
-    dataSource: 'imported',
-    timePeriod: 'Last 30 Days',
-    notes: 'Historical data imported'
-  },
-  avgSpend: { 
-    value: '$28.50', 
-    change: 2.8, 
+  totalReach: { 
+    value: '24,500', 
     trend: 'up',
     lastUpdated: new Date().toISOString().split('T')[0],
     dataSource: 'api',
     timePeriod: 'Last 30 Days',
-    notes: 'Real-time POS integration'
+    notes: 'Total impressions across all channels'
   }
 });
 
-// Validation function
+// Validation function  
 const validateMetrics = (data: any): data is Record<string, MetricData> => {
   if (!data || typeof data !== 'object') return false;
   
-  const requiredMetrics = ['gac', 'ltv', 'repeatRate', 'avgSpend'];
+  const requiredMetrics = ['gac', 'emailOptIns', 'totalReach'];
   return requiredMetrics.every(metric => {
     const metricData = data[metric];
     return metricData && 

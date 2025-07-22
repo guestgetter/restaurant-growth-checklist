@@ -12,11 +12,10 @@ interface FunnelStageData {
 }
 
 interface DashboardFunnelProps {
-  secondaryMetrics: Record<string, any>;
   isDataEntryMode: boolean;
 }
 
-export default function DashboardFunnel({ secondaryMetrics, isDataEntryMode }: DashboardFunnelProps) {
+export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProps) {
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set());
   const [editingStage, setEditingStage] = useState<string | null>(null);
   
