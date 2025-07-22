@@ -593,7 +593,7 @@ export default function DashboardPage() {
       </div>
 
       {/* AIDA Marketing Funnel */}
-      <DashboardFunnel secondaryMetrics={secondaryMetrics} />
+      <DashboardFunnel secondaryMetrics={secondaryMetrics} isDataEntryMode={isDataEntryMode} />
 
     </div>
   );

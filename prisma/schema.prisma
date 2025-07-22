@@ -255,3 +255,11 @@ model ChecklistSubTask {
   
   @@unique([originalId])
 }
+
+// Funnel Data for AIDA Marketing Analytics
+model FunnelData {
+  id        String   @id @default(cuid())
+  data      Json     // Stores the funnel stage data (attention, interest, desire, action)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
