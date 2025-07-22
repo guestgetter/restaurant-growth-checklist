@@ -352,7 +352,7 @@ export default function DashboardPage() {
 
 
       {/* AIDA Marketing Funnel */}
-      <DashboardFunnel isDataEntryMode={isDataEntryMode} />
+      <DashboardFunnel isDataEntryMode={isDataEntryMode} clientId={undefined} />
 
     </div>
   );

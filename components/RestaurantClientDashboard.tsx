@@ -23,7 +23,7 @@ import {
   ArrowUpRight,
   ArrowDownRight
 } from 'lucide-react';
-import RestaurantFunnelVisualization from './RestaurantFunnelVisualization';
+import DashboardFunnel from './DashboardFunnel';
 
 interface RestaurantMetrics {
   // Core Restaurant KPIs
@@ -370,14 +370,10 @@ export default function RestaurantClientDashboard({ clientId }: { clientId: stri
           </div>
         </div>
 
-        {/* Customer Journey Funnel */}
-        <RestaurantFunnelVisualization
+        {/* Customer Journey Funnel - Client-Specific Data */}
+        <DashboardFunnel
+          isDataEntryMode={true}
           clientId={client.id}
-          googleAdsData={client.metrics.googleAds}
-          metaAdsData={client.metrics.metaAds}
-          searchData={client.metrics.searchData}
-          monthlyRevenue={client.metrics.monthlyRevenue}
-          repeatCustomerRate={client.metrics.repeatCustomerRate}
         />
 
         {/* Platform Performance */}
