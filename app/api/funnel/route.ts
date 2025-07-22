@@ -11,15 +11,14 @@ interface FunnelStageData {
 }
 
 interface FunnelData {
-  attention: FunnelStageData;
-  interest: FunnelStageData;
-  desire: FunnelStageData;
-  action: FunnelStageData;
+  impressions: FunnelStageData;
+  optIns: FunnelStageData;
+  redemptions: FunnelStageData;
 }
 
 // Default funnel data structure
 const getDefaultFunnelData = (): FunnelData => ({
-  attention: {
+  impressions: {
     value: 24500,
     sources: [
       { name: 'Google Ads', value: 12400, color: 'bg-blue-500' },
@@ -28,40 +27,29 @@ const getDefaultFunnelData = (): FunnelData => ({
     ],
     lastUpdated: new Date().toISOString().split('T')[0],
     dataSource: 'manual',
-    notes: 'Combined impressions across all channels'
+    notes: 'Total reach across all marketing channels'
   },
-  interest: {
-    value: 1210,
-    sources: [
-      { name: 'Google Ads', value: 680, color: 'bg-green-500' },
-      { name: 'Meta Ads', value: 420, color: 'bg-green-600' },
-      { name: 'Search/Organic', value: 110, color: 'bg-green-400' }
-    ],
-    lastUpdated: new Date().toISOString().split('T')[0],
-    dataSource: 'manual',
-    notes: 'Clicks and engagement actions'
-  },
-  desire: {
+  optIns: {
     value: 485,
     sources: [
-      { name: 'Menu Views', value: 280, color: 'bg-yellow-500' },
-      { name: 'Location/Hours', value: 125, color: 'bg-yellow-600' },
-      { name: 'Reviews Read', value: 80, color: 'bg-yellow-400' }
+      { name: 'Email Signups', value: 285, color: 'bg-green-500' },
+      { name: 'Phone Numbers', value: 125, color: 'bg-green-600' },
+      { name: 'Birthday Collection', value: 75, color: 'bg-green-400' }
     ],
     lastUpdated: new Date().toISOString().split('T')[0],
     dataSource: 'manual',
-    notes: 'Intent signals - deeper engagement'
+    notes: 'Distribution assets collected (emails, phones, birthdays)'
   },
-  action: {
+  redemptions: {
     value: 89,
     sources: [
-      { name: 'Online Reservations', value: 52, color: 'bg-orange-500' },
-      { name: 'Phone Calls', value: 28, color: 'bg-orange-600' },
-      { name: 'Walk-ins (est)', value: 9, color: 'bg-orange-400' }
+      { name: 'Email Offers Redeemed', value: 52, color: 'bg-orange-500' },
+      { name: 'SMS Offers Redeemed', value: 28, color: 'bg-orange-600' },
+      { name: 'Birthday Offers Redeemed', value: 9, color: 'bg-orange-400' }
     ],
     lastUpdated: new Date().toISOString().split('T')[0],
     dataSource: 'manual',
-    notes: 'Meaningful actions taken'
+    notes: 'Actual offer redemptions and conversions'
   }
 });
 
@@ -69,7 +57,7 @@ const getDefaultFunnelData = (): FunnelData => ({
 const validateFunnelData = (data: any): data is FunnelData => {
   if (!data || typeof data !== 'object') return false;
   
-  const requiredStages = ['attention', 'interest', 'desire', 'action'];
+  const requiredStages = ['impressions', 'optIns', 'redemptions'];
   return requiredStages.every(stage => {
     const stageData = data[stage];
     return stageData && 

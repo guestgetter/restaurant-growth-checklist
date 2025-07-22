@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Eye, MousePointer, Heart, Users, TrendingUp, Edit3, Save, X, Database, ChevronDown, ChevronRight } from 'lucide-react';
+import { Eye, MousePointer, Heart, Users, TrendingUp, Edit3, Save, X, Database, ChevronDown, ChevronRight, Mail } from 'lucide-react';
 
 interface FunnelStageData {
   value: number;
@@ -18,10 +18,11 @@ interface DashboardFunnelProps {
 export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProps) {
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set());
   const [editingStage, setEditingStage] = useState<string | null>(null);
+  const [editingSource, setEditingSource] = useState<{stageKey: string, sourceIndex: number} | null>(null);
   
   // Initialize funnel data with persistence capability
   const [funnelData, setFunnelData] = useState<Record<string, FunnelStageData>>({
-    attention: {
+    impressions: {
       value: 24500,
       sources: [
         { name: 'Google Ads', value: 12400, color: 'bg-blue-500' },
@@ -30,83 +31,61 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
       ],
       lastUpdated: new Date().toISOString().split('T')[0],
       dataSource: 'manual',
-      notes: 'Combined impressions across all channels'
+      notes: 'Total reach across all marketing channels'
     },
-    interest: {
-      value: 1210,
-      sources: [
-        { name: 'Google Ads', value: 680, color: 'bg-green-500' },
-        { name: 'Meta Ads', value: 420, color: 'bg-green-600' },
-        { name: 'Search/Organic', value: 110, color: 'bg-green-400' }
-      ],
-      lastUpdated: new Date().toISOString().split('T')[0],
-      dataSource: 'manual',
-      notes: 'Clicks and engagement actions'
-    },
-    desire: {
+    optIns: {
       value: 485,
       sources: [
-        { name: 'Menu Views', value: 280, color: 'bg-yellow-500' },
-        { name: 'Location/Hours', value: 125, color: 'bg-yellow-600' },
-        { name: 'Reviews Read', value: 80, color: 'bg-yellow-400' }
+        { name: 'Email Signups', value: 285, color: 'bg-green-500' },
+        { name: 'Phone Numbers', value: 125, color: 'bg-green-600' },
+        { name: 'Birthday Collection', value: 75, color: 'bg-green-400' }
       ],
       lastUpdated: new Date().toISOString().split('T')[0],
       dataSource: 'manual',
-      notes: 'Intent signals - deeper engagement'
+      notes: 'Distribution assets collected (emails, phones, birthdays)'
     },
-    action: {
+    redemptions: {
       value: 89,
       sources: [
-        { name: 'Online Reservations', value: 52, color: 'bg-orange-500' },
-        { name: 'Phone Calls', value: 28, color: 'bg-orange-600' },
-        { name: 'Walk-ins (est)', value: 9, color: 'bg-orange-400' }
+        { name: 'Email Offers Redeemed', value: 52, color: 'bg-orange-500' },
+        { name: 'SMS Offers Redeemed', value: 28, color: 'bg-orange-600' },
+        { name: 'Birthday Offers Redeemed', value: 9, color: 'bg-orange-400' }
       ],
       lastUpdated: new Date().toISOString().split('T')[0],
       dataSource: 'manual',
-      notes: 'Meaningful actions taken'
+      notes: 'Actual offer redemptions and conversions'
     }
   });
 
   const stages = [
     {
-      key: 'attention',
-      name: 'Attention',
+      key: 'impressions',
+      name: 'Impressions/Reach',
       icon: Eye,
-      subtitle: 'Impressions & Views',
-      description: 'Total reach across all marketing channels',
+      subtitle: 'Total Marketing Reach',
+      description: 'Combined impressions and reach across all marketing channels',
       width: 400,
       color: 'from-blue-100 to-blue-200',
       borderColor: 'border-blue-300',
       textColor: 'text-blue-600'
     },
     {
-      key: 'interest', 
-      name: 'Interest',
-      icon: MousePointer,
-      subtitle: 'Clicks & Engagement',
-      description: 'People who showed interest by clicking or engaging',
-      width: 320,
+      key: 'optIns', 
+      name: 'Opt-ins',
+      icon: Mail,
+      subtitle: 'Distribution Assets',
+      description: 'Email addresses, phone numbers, and birthdays collected',
+      width: 280,
       color: 'from-green-100 to-green-200',
       borderColor: 'border-green-300',
       textColor: 'text-green-600'
     },
     {
-      key: 'desire',
-      name: 'Desire',
-      icon: Heart,
-      subtitle: 'Intent Signals',
-      description: 'Deeper engagement showing purchase intent',
-      width: 240,
-      color: 'from-yellow-100 to-yellow-200',
-      borderColor: 'border-yellow-300',
-      textColor: 'text-yellow-600'
-    },
-    {
-      key: 'action',
-      name: 'Action',
+      key: 'redemptions',
+      name: 'Redemptions',
       icon: Users,
-      subtitle: 'Meaningful Actions',
-      description: 'Reservations, calls, and direct conversions',
+      subtitle: 'Offers Redeemed',
+      description: 'Actual offer redemptions and revenue-generating actions',
       width: 160,
       color: 'from-orange-100 to-orange-200',
       borderColor: 'border-orange-300',
@@ -116,9 +95,8 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
 
   // Calculate conversion rates
   const conversionRates = {
-    attentionToInterest: ((funnelData.interest.value / funnelData.attention.value) * 100).toFixed(1),
-    interestToDesire: ((funnelData.desire.value / funnelData.interest.value) * 100).toFixed(1),
-    desireToAction: ((funnelData.action.value / funnelData.desire.value) * 100).toFixed(1)
+    impressionsToOptIns: ((funnelData.optIns.value / funnelData.impressions.value) * 100).toFixed(1),
+    optInsToRedemptions: ((funnelData.redemptions.value / funnelData.optIns.value) * 100).toFixed(1)
   };
 
   const toggleStage = (stageKey: string) => {
@@ -224,6 +202,74 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
     }
   };
 
+  const handleSourceEdit = async (stageKey: string, sourceIndex: number, newValue: string) => {
+    // Validate input
+    const numericValue = parseInt(newValue.replace(/[^\d]/g, '')) || 0;
+    if (numericValue < 0) {
+      setError('Value cannot be negative');
+      return;
+    }
+
+    const updatedSources = [...funnelData[stageKey].sources];
+    updatedSources[sourceIndex] = {
+      ...updatedSources[sourceIndex],
+      value: numericValue
+    };
+
+    // Calculate new total from all sources
+    const newTotal = updatedSources.reduce((sum, source) => sum + source.value, 0);
+
+    const updatedData = {
+      ...funnelData,
+      [stageKey]: {
+        ...funnelData[stageKey],
+        sources: updatedSources,
+        value: newTotal, // Auto-update total based on sources
+        lastUpdated: new Date().toISOString().split('T')[0],
+        dataSource: 'manual' as const,
+        notes: `Sources updated - total auto-calculated (${newTotal.toLocaleString()})`
+      }
+    };
+
+    setFunnelData(updatedData as Record<string, FunnelStageData>);
+    setEditingSource(null);
+    setSaveStatus('saving');
+    setError(null);
+    
+    // Save to database
+    try {
+      const response = await fetch('/api/funnel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ funnelData: updatedData })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setSaveStatus('saved');
+        if (result.fallback) {
+          setError('⚠️ Data updated locally but not saved to database yet');
+        } else {
+          setTimeout(() => setSaveStatus('idle'), 2000);
+        }
+      } else {
+        throw new Error(result.message || 'Failed to save funnel data');
+      }
+    } catch (error) {
+      console.error('❌ Failed to save funnel data:', error);
+      setSaveStatus('error');
+      setError('Failed to save data. Changes are temporary.');
+      
+      try {
+        localStorage.setItem('dashboardFunnelData', JSON.stringify(updatedData));
+        setError('Failed to save to database. Data saved locally as backup.');
+      } catch (localError) {
+        setError('Failed to save data. Please try again.');
+      }
+    }
+  };
+
   const getDataSourceIcon = (source: string) => {
     switch (source) {
       case 'api': return <Database className="text-green-600" size={12} />;
@@ -303,18 +349,51 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
           <div className="mt-4 bg-white rounded-lg border border-gray-200 p-4 w-80">
             <p className="text-sm text-gray-600 mb-3">{stage.description}</p>
             
-            {/* Source Breakdown */}
+            {/* Source Breakdown - Editable */}
             <div className="space-y-2">
               <h4 className="font-medium text-gray-900 text-sm">Source Breakdown:</h4>
-              {data.sources.map((source, index) => (
-                <div key={index} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-3 h-3 rounded-full ${source.color}`}></div>
-                    <span className="text-gray-600">{source.name}</span>
+              {data.sources.map((source, index) => {
+                const isEditingThisSource = editingSource?.stageKey === stage.key && editingSource?.sourceIndex === index;
+                return (
+                  <div key={index} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-3 h-3 rounded-full ${source.color}`}></div>
+                      <span className="text-gray-600">{source.name}</span>
+                    </div>
+                    {isEditingThisSource && isDataEntryMode ? (
+                      <EditableSourceValue 
+                        value={source.value.toString()}
+                        onSave={(newValue) => handleSourceEdit(stage.key, index, newValue)}
+                        onCancel={() => setEditingSource(null)}
+                      />
+                    ) : (
+                      <span 
+                        className={`font-medium text-gray-800 ${
+                          isDataEntryMode ? 'cursor-pointer hover:bg-yellow-100 rounded px-1' : ''
+                        }`}
+                        onClick={() => {
+                          if (isDataEntryMode) {
+                            setEditingSource({stageKey: stage.key, sourceIndex: index});
+                          }
+                        }}
+                      >
+                        {source.value.toLocaleString()}
+                      </span>
+                    )}
                   </div>
-                  <span className="font-medium text-gray-800">{source.value.toLocaleString()}</span>
+                );
+              })}
+              
+              {/* Show total calculation */}
+              <div className="pt-2 mt-2 border-t border-gray-200">
+                <div className="flex items-center justify-between text-sm font-semibold">
+                  <span className="text-gray-700">Total:</span>
+                  <span className="text-gray-900">{data.value.toLocaleString()}</span>
                 </div>
-              ))}
+                <p className="text-xs text-gray-500 mt-1">
+                  Sources automatically update the total
+                </p>
+              </div>
             </div>
             
             {data.notes && (
@@ -350,10 +429,10 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
       <div className="flex items-center gap-3 mb-6">
         <TrendingUp className="text-blue-600" size={24} />
         <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100">
-          AIDA Marketing Funnel
+          Marketing Performance Funnel
         </h2>
         <span className="text-sm text-slate-500 dark:text-slate-400">
-          Attention → Interest → Desire → Action
+          Impressions → Opt-ins → Redemptions
         </span>
         
         {/* Save Status Indicator */}
@@ -402,14 +481,13 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
       <div className="flex flex-col items-center space-y-4">
         {stages.map((stage, index) => (
           <div key={stage.key}>
-            <FunnelStage 
-              stage={stage}
-              data={funnelData[stage.key]}
-              conversionRate={index === 0 ? undefined : 
-                             index === 1 ? conversionRates.attentionToInterest :
-                             index === 2 ? conversionRates.interestToDesire :
-                             conversionRates.desireToAction}
-            />
+                         <FunnelStage 
+               stage={stage}
+               data={funnelData[stage.key]}
+               conversionRate={index === 0 ? undefined : 
+                              index === 1 ? conversionRates.impressionsToOptIns :
+                              conversionRates.optInsToRedemptions}
+             />
             {index < stages.length - 1 && (
               <div className="text-gray-400 text-2xl">↓</div>
             )}
@@ -434,18 +512,14 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
       {/* Key Insights */}
       <div className="mt-8 p-4 bg-gray-50 rounded-lg">
         <h4 className="font-medium text-gray-900 mb-3">Conversion Insights:</h4>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
           <div className="text-center">
-            <p className="font-semibold text-blue-600">{conversionRates.attentionToInterest}%</p>
-            <p className="text-gray-600">Attention → Interest</p>
+            <p className="font-semibold text-blue-600">{conversionRates.impressionsToOptIns}%</p>
+            <p className="text-gray-600">Impressions → Opt-ins</p>
           </div>
           <div className="text-center">
-            <p className="font-semibold text-orange-600">{conversionRates.desireToAction}%</p>
-            <p className="text-gray-600">Desire → Action</p>
-          </div>
-          <div className="text-center">
-            <p className="font-semibold text-purple-600">34%</p>
-            <p className="text-gray-600">Customer Retention</p>
+            <p className="font-semibold text-orange-600">{conversionRates.optInsToRedemptions}%</p>
+            <p className="text-gray-600">Opt-ins → Redemptions</p>
           </div>
         </div>
       </div>
@@ -498,6 +572,43 @@ function EditableFunnelValue({
           Cancel
         </button>
       </div>
+    </div>
+  );
+}
+
+// Editable Source Value Component (simpler than main funnel values)
+function EditableSourceValue({ 
+  value, 
+  onSave, 
+  onCancel 
+}: { 
+  value: string; 
+  onSave: (value: string) => void; 
+  onCancel: () => void; 
+}) {
+  const [editValue, setEditValue] = useState(value);
+
+  return (
+    <div className="flex items-center gap-1">
+      <input
+        type="text"
+        value={editValue}
+        onChange={(e) => setEditValue(e.target.value)}
+        className="w-16 text-sm font-medium bg-white border border-gray-300 rounded px-1 py-0.5 text-center"
+        autoFocus
+      />
+      <button
+        onClick={() => onSave(editValue)}
+        className="px-1 py-0.5 bg-green-600 text-white rounded text-xs hover:bg-green-700"
+      >
+        <Save size={10} />
+      </button>
+      <button
+        onClick={onCancel}
+        className="px-1 py-0.5 bg-gray-600 text-white rounded text-xs hover:bg-gray-700"
+      >
+        <X size={10} />
+      </button>
     </div>
   );
 } 
