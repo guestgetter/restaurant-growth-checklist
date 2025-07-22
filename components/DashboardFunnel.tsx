@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Eye, MousePointer, Heart, Users, TrendingUp, Edit3, Save, X, Database, ChevronDown, ChevronRight, Mail } from 'lucide-react';
+import { Eye, MousePointer, Heart, Users, TrendingUp, Edit3, Save, X, Database, ChevronDown, ChevronRight, Mail, Plus } from 'lucide-react';
 
 interface FunnelStageData {
   value: number;
@@ -20,6 +20,7 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
   const [editingStage, setEditingStage] = useState<string | null>(null);
   const [editingSource, setEditingSource] = useState<{stageKey: string, sourceIndex: number} | null>(null);
   const [editingSourceName, setEditingSourceName] = useState<{stageKey: string, sourceIndex: number} | null>(null);
+  const [addingSource, setAddingSource] = useState<string | null>(null);
   
   // Initialize funnel data with persistence capability
   const [funnelData, setFunnelData] = useState<Record<string, FunnelStageData>>({
@@ -373,6 +374,89 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
     }
   };
 
+  const handleAddSource = async (stageKey: string, sourceName: string, sourceValue: string) => {
+    // Validate input
+    if (!sourceName || sourceName.trim() === '') {
+      setError('Source name cannot be empty');
+      return;
+    }
+    if (!sourceValue || sourceValue.trim() === '') {
+      setError('Source value cannot be empty');
+      return;
+    }
+
+    const numericValue = parseInt(sourceValue.replace(/[^\d]/g, '')) || 0;
+    if (numericValue < 0) {
+      setError('Value cannot be negative');
+      return;
+    }
+
+    // Generate a color for the new source (cycle through some predefined colors)
+    const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500', 'bg-red-500', 'bg-yellow-500', 'bg-indigo-500', 'bg-pink-500'];
+    const existingColors = funnelData[stageKey].sources.map(s => s.color);
+    const availableColors = colors.filter(color => !existingColors.includes(color));
+    const newColor = availableColors.length > 0 ? availableColors[0] : colors[funnelData[stageKey].sources.length % colors.length];
+
+    const newSource = {
+      name: sourceName.trim(),
+      value: numericValue,
+      color: newColor
+    };
+
+    const updatedSources = [...funnelData[stageKey].sources, newSource];
+    const newTotal = updatedSources.reduce((sum, source) => sum + source.value, 0);
+
+    const updatedData = {
+      ...funnelData,
+      [stageKey]: {
+        ...funnelData[stageKey],
+        sources: updatedSources,
+        value: newTotal,
+        lastUpdated: new Date().toISOString().split('T')[0],
+        dataSource: 'manual' as const,
+        notes: `Added new source: ${sourceName} (${numericValue.toLocaleString()})`
+      }
+    };
+
+    setFunnelData(updatedData as Record<string, FunnelStageData>);
+    setAddingSource(null);
+    setSaveStatus('saving');
+    setError(null);
+    
+    // Save to database
+    try {
+      const response = await fetch('/api/funnel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ funnelData: updatedData })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setSaveStatus('saved');
+        if (result.fallback) {
+          setError('⚠️ Data updated locally but not saved to database yet');
+        } else {
+          setTimeout(() => setSaveStatus('idle'), 2000);
+        }
+      } else {
+        throw new Error(result.message || 'Failed to save funnel data');
+      }
+    } catch (error) {
+      console.error('❌ Failed to save funnel data:', error);
+      setSaveStatus('error');
+      setError('Failed to save data. Changes are temporary.');
+      
+      try {
+        localStorage.setItem('dashboardFunnelData', JSON.stringify(updatedData));
+        setError('Failed to save to database. Data saved locally as backup.');
+      } catch (localError) {
+        setError('Failed to save data. Please try again.');
+      }
+    }
+  };
+
   const getDataSourceIcon = (source: string) => {
     switch (source) {
       case 'api': return <Database className="text-green-600" size={12} />;
@@ -508,6 +592,25 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
                   </div>
                 );
               })}
+              
+              {/* Add Source Button/Form */}
+              {isDataEntryMode && (
+                <div className="mt-3 pt-2 border-t border-gray-100">
+                  {addingSource === stage.key ? (
+                    <AddSourceForm 
+                      onSave={(name, value) => handleAddSource(stage.key, name, value)}
+                      onCancel={() => setAddingSource(null)}
+                    />
+                  ) : (
+                    <button
+                      onClick={() => setAddingSource(stage.key)}
+                      className="w-full text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded px-2 py-1 border border-dashed border-blue-300 hover:border-blue-400 transition-colors"
+                    >
+                      + Add Source
+                    </button>
+                  )}
+                </div>
+              )}
               
               {/* Show total calculation */}
               <div className="pt-2 mt-2 border-t border-gray-200">
@@ -777,6 +880,58 @@ function EditableSourceName({
       >
         <X size={10} />
       </button>
+    </div>
+  );
+}
+
+// Add Source Form Component
+function AddSourceForm({ 
+  onSave, 
+  onCancel 
+}: { 
+  onSave: (name: string, value: string) => void; 
+  onCancel: () => void; 
+}) {
+  const [sourceName, setSourceName] = useState('');
+  const [sourceValue, setSourceValue] = useState('');
+
+  return (
+    <div className="space-y-2 p-2 bg-blue-50 rounded border border-blue-200">
+      <div className="text-xs font-medium text-blue-800 mb-2">Add New Source</div>
+      <div className="space-y-2">
+        <input
+          type="text"
+          value={sourceName}
+          onChange={(e) => setSourceName(e.target.value)}
+          className="w-full text-sm bg-white border border-blue-300 rounded px-2 py-1"
+          placeholder="Source name (e.g., TikTok Ads)"
+          autoFocus
+        />
+        <input
+          type="text"
+          value={sourceValue}
+          onChange={(e) => setSourceValue(e.target.value)}
+          className="w-full text-sm bg-white border border-blue-300 rounded px-2 py-1"
+          placeholder="Value (e.g., 1500)"
+        />
+      </div>
+      <div className="flex gap-2 justify-end">
+        <button
+          onClick={() => onSave(sourceName, sourceValue)}
+          className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 flex items-center gap-1"
+          disabled={!sourceName.trim() || !sourceValue.trim()}
+        >
+          <Save size={10} />
+          Add
+        </button>
+        <button
+          onClick={onCancel}
+          className="px-2 py-1 bg-gray-600 text-white rounded text-xs hover:bg-gray-700 flex items-center gap-1"
+        >
+          <X size={10} />
+          Cancel
+        </button>
+      </div>
     </div>
   );
 } 
