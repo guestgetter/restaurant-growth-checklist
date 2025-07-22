@@ -3,6 +3,24 @@ import { prisma } from '../../../lib/prisma';
 
 export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const isHistorical = searchParams.get('history') === 'true';
+    const days = parseInt(searchParams.get('days') || '30');
+
+    if (isHistorical) {
+      // Return historical data for trends
+      const historicalData = await prisma.funnelData.findMany({
+        where: {
+          createdAt: {
+            gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+          }
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 50
+      });
+      return NextResponse.json(historicalData);
+    }
+
     // Get the latest funnel data
     const funnelData = await prisma.funnelData.findFirst({
       orderBy: { createdAt: 'desc' }
@@ -46,24 +64,4 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET_HISTORY(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const days = parseInt(searchParams.get('days') || '30');
-    
-    const historicalData = await prisma.funnelData.findMany({
-      where: {
-        createdAt: {
-          gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000)
-        }
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 50 // Limit to 50 records
-    });
-
-    return NextResponse.json(historicalData);
-  } catch (error) {
-    console.error('Error fetching funnel history:', error);
-    return NextResponse.json({ error: 'Failed to fetch funnel history' }, { status: 500 });
-  }
-} 
+// Note: Historical data can be fetched via GET with ?history=true query param 

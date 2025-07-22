@@ -24,22 +24,8 @@ export async function GET(request: NextRequest) {
       provider: session.user?.image ? 'google' : 'credentials'
     };
 
-    // Try to get the refresh token from the raw JWT
-    try {
-      const jwt = require('jsonwebtoken');
-      const token = request.cookies.get('next-auth.session-token')?.value || 
-                   request.cookies.get('__Secure-next-auth.session-token')?.value;
-      
-      if (token) {
-        // Decode without verification to peek at the token
-        const decoded = jwt.decode(token) as any;
-        if (decoded?.refreshToken) {
-          tokenInfo.refreshToken = decoded.refreshToken;
-        }
-      }
-    } catch (error) {
-      console.log('Could not decode JWT token:', error);
-    }
+    // Note: JWT token decoding removed to avoid build dependencies
+    // For production apps, consider using a proper JWT library
 
     return NextResponse.json(tokenInfo);
   } catch (error) {
