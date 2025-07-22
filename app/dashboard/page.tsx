@@ -591,44 +591,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Data Quality Overview */}
-      <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl p-6 border border-blue-200 dark:border-blue-800">
-        <div className="flex items-center gap-3 mb-4">
-          <Zap className="text-blue-600" size={24} />
-          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">
-            Why This Matters
-          </h2>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-          <div className="bg-white/50 dark:bg-slate-800/50 rounded-lg p-4">
-            <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-2">
-              Everyone knows what matters
-            </h3>
-            <p className="text-slate-600 dark:text-slate-400">
-              Clear visibility into the metrics that drive restaurant growth
-            </p>
-          </div>
-          
-          <div className="bg-white/50 dark:bg-slate-800/50 rounded-lg p-4">
-            <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-2">
-              Manual entry when needed
-            </h3>
-            <p className="text-slate-600 dark:text-slate-400">
-              Account managers can maintain accurate data even before full API integration
-            </p>
-          </div>
-          
-          <div className="bg-white/50 dark:bg-slate-800/50 rounded-lg p-4">
-            <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-2">
-              Historical tracking built-in
-            </h3>
-            <p className="text-slate-600 dark:text-slate-400">
-              Track trends over time with date range selection and data source transparency
-            </p>
-          </div>
-        </div>
-      </div>
+
     </div>
   );
 }
