@@ -263,3 +263,11 @@ model FunnelData {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+// Dashboard Metrics for Key Performance Indicators
+model DashboardMetrics {
+  id        String   @id @default(cuid())
+  data      Json     // Stores the main dashboard metrics (gac, ltv, repeatRate, avgSpend)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

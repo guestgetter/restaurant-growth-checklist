@@ -36,46 +36,76 @@ export default function DashboardPage() {
   const [editingMetric, setEditingMetric] = useState<string | null>(null);
   const [selectedDateRange, setSelectedDateRange] = useState('last30');
   const [isDataEntryMode, setIsDataEntryMode] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
-  // Primary Metrics Data - Clean and Simple
-  const [primaryMetricsData, setPrimaryMetricsData] = useState<Record<string, MetricData>>({
-    gac: { 
-      value: '$12.45', 
-      change: -8.2, 
-      trend: 'down',
-      lastUpdated: '2025-01-06',
-      dataSource: 'api',
-      timePeriod: 'Last 30 Days',
-      notes: 'Pulled from Google Ads API'
-    },
-    ltv: { 
-      value: '$156.78', 
-      change: 12.3, 
-      trend: 'up',
-      lastUpdated: '2025-01-05',
-      dataSource: 'manual',
-      timePeriod: 'Last 30 Days',
-      notes: 'Calculated from POS data'
-    },
-    repeatRate: { 
-      value: '34.2%', 
-      change: 5.1, 
-      trend: 'up',
-      lastUpdated: '2025-01-04',
-      dataSource: 'imported',
-      timePeriod: 'Last 30 Days',
-      notes: 'Historical data imported'
-    },
-    avgSpend: { 
-      value: '$28.50', 
-      change: 2.8, 
-      trend: 'up',
-      lastUpdated: '2025-01-06',
-      dataSource: 'api',
-      timePeriod: 'Last 30 Days',
-      notes: 'Real-time POS integration'
-    }
-  });
+  // Primary Metrics Data - Loaded from API
+  const [primaryMetricsData, setPrimaryMetricsData] = useState<Record<string, MetricData>>({});
+
+  // Load metrics data on component mount
+  useEffect(() => {
+    const loadMetricsData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        const response = await fetch('/api/metrics');
+        if (response.ok) {
+          const data = await response.json();
+          setPrimaryMetricsData(data);
+        } else {
+          throw new Error(`Failed to load metrics: ${response.status}`);
+        }
+      } catch (error) {
+        console.error('Failed to load metrics data:', error);
+        setError('Unable to load metrics data. Using defaults.');
+        // Set fallback data
+        setPrimaryMetricsData({
+          gac: { 
+            value: '$12.45', 
+            change: -8.2, 
+            trend: 'down',
+            lastUpdated: new Date().toISOString().split('T')[0],
+            dataSource: 'api',
+            timePeriod: 'Last 30 Days',
+            notes: 'Pulled from Google Ads API'
+          },
+          ltv: { 
+            value: '$156.78', 
+            change: 12.3, 
+            trend: 'up',
+            lastUpdated: new Date().toISOString().split('T')[0],
+            dataSource: 'manual',
+            timePeriod: 'Last 30 Days',
+            notes: 'Calculated from POS data'
+          },
+          repeatRate: { 
+            value: '34.2%', 
+            change: 5.1, 
+            trend: 'up',
+            lastUpdated: new Date().toISOString().split('T')[0],
+            dataSource: 'imported',
+            timePeriod: 'Last 30 Days',
+            notes: 'Historical data imported'
+          },
+          avgSpend: { 
+            value: '$28.50', 
+            change: 2.8, 
+            trend: 'up',
+            lastUpdated: new Date().toISOString().split('T')[0],
+            dataSource: 'api',
+            timePeriod: 'Last 30 Days',
+            notes: 'Real-time POS integration'
+          }
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadMetricsData();
+  }, []);
 
   // Date range options with clear time periods
   const dateRanges = [
@@ -92,20 +122,67 @@ export default function DashboardPage() {
     return selected ? selected.label : 'Current Period';
   };
 
-  // Manual data entry handlers
-  const handleMetricEdit = (metricKey: string, newValue: string, notes?: string, timePeriod?: string) => {
-    setPrimaryMetricsData(prev => ({
-      ...prev,
+  // Manual data entry handlers with API persistence
+  const handleMetricEdit = async (metricKey: string, newValue: string, notes?: string, timePeriod?: string) => {
+    // Validate input
+    if (!newValue || newValue.trim() === '') {
+      setError('Value cannot be empty');
+      return;
+    }
+
+    const updatedData = {
+      ...primaryMetricsData,
       [metricKey]: {
-        ...prev[metricKey],
+        ...primaryMetricsData[metricKey],
         value: newValue,
         lastUpdated: new Date().toISOString().split('T')[0],
-        dataSource: 'manual',
+        dataSource: 'manual' as const,
         timePeriod: timePeriod || getCurrentTimePeriod(),
         notes: notes || `Updated manually for ${getCurrentTimePeriod()}`
       }
-    }));
+    };
+
+    // Update UI immediately for better UX
+    setPrimaryMetricsData(updatedData);
     setEditingMetric(null);
+    setSaveStatus('saving');
+    setError(null);
+    
+    // Save to database
+    try {
+      const response = await fetch('/api/metrics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ metricsData: updatedData })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setSaveStatus('saved');
+        if (result.fallback) {
+          setError('⚠️ Data updated locally but not saved to database yet');
+        } else {
+          // Clear any previous errors
+          setTimeout(() => setSaveStatus('idle'), 2000);
+        }
+        console.log('✅ Dashboard metrics saved successfully');
+      } else {
+        throw new Error(result.message || 'Failed to save metrics data');
+      }
+    } catch (error) {
+      console.error('❌ Failed to save metrics data:', error);
+      setSaveStatus('error');
+      setError('Failed to save data. Changes are temporary until you refresh.');
+      
+      // Fallback to localStorage for recovery
+      try {
+        localStorage.setItem('dashboardMetricsData', JSON.stringify(updatedData));
+        setError('Failed to save to database. Data saved locally as backup.');
+      } catch (localError) {
+        setError('Failed to save data. Please try again.');
+      }
+    }
   };
 
   const getDataSourceIcon = (source: string) => {
@@ -152,6 +229,20 @@ export default function DashboardPage() {
     callsDirections: { value: '89', change: 21.3, trend: 'up', dataSource: 'imported', timePeriod: getCurrentTimePeriod() }
   };
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="p-6 max-w-7xl mx-auto">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-slate-600 dark:text-slate-400">Loading dashboard metrics...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header with Controls */}
@@ -168,6 +259,32 @@ export default function DashboardPage() {
         
         {/* Data Entry Mode Toggle */}
         <div className="flex items-center gap-4">
+          {/* Save Status Indicator */}
+          {saveStatus !== 'idle' && (
+            <div className="flex items-center gap-2">
+              {saveStatus === 'saving' && (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <span className="text-sm text-blue-600">Saving...</span>
+                </>
+              )}
+              {saveStatus === 'saved' && (
+                <>
+                  <div className="h-4 w-4 rounded-full bg-green-500 flex items-center justify-center">
+                    <span className="text-white text-xs">✓</span>
+                  </div>
+                  <span className="text-sm text-green-600">Saved</span>
+                </>
+              )}
+              {saveStatus === 'error' && (
+                <>
+                  <X className="h-4 w-4 text-red-500" />
+                  <span className="text-sm text-red-600">Error</span>
+                </>
+              )}
+            </div>
+          )}
+          
           <button
             onClick={() => setIsDataEntryMode(!isDataEntryMode)}
             className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
@@ -181,6 +298,22 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+          <div className="flex items-center gap-2">
+            <span className="text-yellow-600">⚠️</span>
+            <span className="text-sm text-yellow-800 dark:text-yellow-200">{error}</span>
+            <button 
+              onClick={() => setError(null)}
+              className="ml-auto text-yellow-600 hover:text-yellow-800"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Time Period Selector */}
       <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
