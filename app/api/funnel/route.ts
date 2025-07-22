@@ -85,6 +85,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const isHistorical = searchParams.get('history') === 'true';
     const days = parseInt(searchParams.get('days') || '30');
+    const clientId = searchParams.get('clientId');
 
     // Check if FunnelData model exists and is accessible
     let hasFunnelDataModel = true;
@@ -126,11 +127,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Get the latest funnel data
-    try {
-      const model = (prisma as any).funnelData;
-      const funnelData = await model.findFirst({
-        orderBy: { createdAt: 'desc' }
-      });
+            try {
+          const model = (prisma as any).funnelData;
+          const funnelData = await model.findFirst({
+            where: clientId ? { clientId } : { clientId: null },
+            orderBy: { createdAt: 'desc' }
+          });
 
       if (!funnelData || !funnelData.data) {
         console.log('No funnel data found, returning defaults');
@@ -164,7 +166,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
     }
 
-    const { funnelData } = body;
+    const { funnelData, clientId } = body;
 
     if (!funnelData) {
       return NextResponse.json({ error: 'Missing funnelData in request' }, { status: 400 });
@@ -202,6 +204,7 @@ export async function POST(request: NextRequest) {
       const model = (prisma as any).funnelData;
       const savedData = await model.create({
         data: {
+          clientId: clientId || null,
           data: funnelData,
           createdAt: new Date()
         }

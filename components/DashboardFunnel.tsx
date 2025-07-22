@@ -13,9 +13,10 @@ interface FunnelStageData {
 
 interface DashboardFunnelProps {
   isDataEntryMode: boolean;
+  clientId?: string;
 }
 
-export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProps) {
+export default function DashboardFunnel({ isDataEntryMode, clientId }: DashboardFunnelProps) {
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set());
   const [editingStage, setEditingStage] = useState<string | null>(null);
   const [editingSource, setEditingSource] = useState<{stageKey: string, sourceIndex: number} | null>(null);
@@ -145,7 +146,8 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
         setIsLoading(true);
         setError(null);
         
-        const response = await fetch('/api/funnel');
+        const url = clientId ? `/api/funnel?clientId=${clientId}` : '/api/funnel';
+        const response = await fetch(url);
         if (response.ok) {
           const data = await response.json();
           
@@ -180,7 +182,7 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
     };
 
     loadFunnelData();
-  }, []);
+  }, [clientId]);
 
   const handleStageEdit = async (stageKey: string, newValue: string, notes?: string) => {
     // Validate input
@@ -212,7 +214,7 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
       const response = await fetch('/api/funnel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ funnelData: updatedData })
+        body: JSON.stringify({ funnelData: updatedData, clientId })
       });
 
       const result = await response.json();
@@ -235,7 +237,7 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
       
       // Fallback to localStorage for recovery
       try {
-        localStorage.setItem('dashboardFunnelData', JSON.stringify(updatedData));
+        localStorage.setItem(`dashboardFunnelData_${clientId || 'default'}`, JSON.stringify(updatedData));
         setError('Failed to save to database. Data saved locally as backup.');
       } catch (localError) {
         setError('Failed to save data. Please try again.');
@@ -282,7 +284,7 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
       const response = await fetch('/api/funnel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ funnelData: updatedData })
+        body: JSON.stringify({ funnelData: updatedData, clientId })
       });
 
       const result = await response.json();
@@ -303,7 +305,7 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
       setError('Failed to save data. Changes are temporary.');
       
       try {
-        localStorage.setItem('dashboardFunnelData', JSON.stringify(updatedData));
+        localStorage.setItem(`dashboardFunnelData_${clientId || 'default'}`, JSON.stringify(updatedData));
         setError('Failed to save to database. Data saved locally as backup.');
       } catch (localError) {
         setError('Failed to save data. Please try again.');
@@ -345,7 +347,7 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
       const response = await fetch('/api/funnel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ funnelData: updatedData })
+        body: JSON.stringify({ funnelData: updatedData, clientId })
       });
 
       const result = await response.json();
@@ -366,7 +368,7 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
       setError('Failed to save data. Changes are temporary.');
       
       try {
-        localStorage.setItem('dashboardFunnelData', JSON.stringify(updatedData));
+        localStorage.setItem(`dashboardFunnelData_${clientId || 'default'}`, JSON.stringify(updatedData));
         setError('Failed to save to database. Data saved locally as backup.');
       } catch (localError) {
         setError('Failed to save data. Please try again.');
@@ -428,7 +430,7 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
       const response = await fetch('/api/funnel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ funnelData: updatedData })
+        body: JSON.stringify({ funnelData: updatedData, clientId })
       });
 
       const result = await response.json();
@@ -449,7 +451,7 @@ export default function DashboardFunnel({ isDataEntryMode }: DashboardFunnelProp
       setError('Failed to save data. Changes are temporary.');
       
       try {
-        localStorage.setItem('dashboardFunnelData', JSON.stringify(updatedData));
+        localStorage.setItem(`dashboardFunnelData_${clientId || 'default'}`, JSON.stringify(updatedData));
         setError('Failed to save to database. Data saved locally as backup.');
       } catch (localError) {
         setError('Failed to save data. Please try again.');
