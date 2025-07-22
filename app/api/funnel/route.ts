@@ -114,7 +114,8 @@ export async function GET(request: NextRequest) {
           where: {
             createdAt: {
               gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000)
-            }
+            },
+            clientId: clientId || null  // Filter historical data by clientId too
           },
           orderBy: { createdAt: 'desc' },
           take: 50
