@@ -54,7 +54,7 @@ interface RestaurantMetrics {
   };
   
   // Manual Entry Data (until integrations ready)
-  couponTools: {
+  offers: {
     activeCoupons: number;
     redemptions: number;
     savings: number;
@@ -110,7 +110,7 @@ const sampleData: Record<string, RestaurantClientData> = {
         reach: 6200
       },
       
-      couponTools: {
+      offers: {
         activeCoupons: 3,
         redemptions: 127,
         savings: 2540,
@@ -158,7 +158,7 @@ const sampleData: Record<string, RestaurantClientData> = {
         reach: 7800
       },
       
-      couponTools: {
+      offers: {
         activeCoupons: 4,
         redemptions: 156,
         savings: 1870,
@@ -389,10 +389,10 @@ export default function RestaurantClientDashboard({ clientId }: { clientId: stri
             dataSource="api"
           />
           
-          {/* CouponTools - Manual Entry */}
+          {/* Offers - Manual Entry */}
           <PlatformSection
-            title="CouponTools Performance"
-            data={client.metrics.couponTools}
+            title="Offers Performance"
+            data={client.metrics.offers}
             icon={Star}
             dataSource="manual"
           />
