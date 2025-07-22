@@ -51,9 +51,9 @@ export const config = {
     '/dashboard/:path*',
     '/checklist/:path*',
     '/client-profile/:path*',
-    '/client/:path*',
+    '/client/((?!amano-trattoria|the-berczy-tavern).*)',  // Allow restaurant clients public access
     '/reports/:path*',
     '/settings/:path*'
-    // Note: /client-call is intentionally NOT protected for easy client access
+    // Note: /client/amano-trattoria and /client/the-berczy-tavern are public for client access
   ]
 } 
